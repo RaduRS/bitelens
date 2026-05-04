@@ -27,10 +27,17 @@ export default function PhotoPage() {
   async function handleFile(file: File) {
     const previewUrl = URL.createObjectURL(file);
     setPhase({ kind: 'analyzing', previewUrl });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 75_000);
     try {
+      const compressed = await compressImage(file).catch(() => null);
+      const upload = compressed ?? file;
+
       const form = new FormData();
-      form.append('photo', file);
-      const res = await fetch('/api/photo/analyze', { method: 'POST', body: form });
+      form.append('photo', upload, 'meal.jpg');
+      const res = await fetch('/api/photo/analyze', {
+        method: 'POST', body: form, signal: controller.signal,
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `Server error (${res.status})`);
       const product = json.product as Product;
@@ -38,10 +45,16 @@ export default function PhotoPage() {
       URL.revokeObjectURL(previewUrl);
       setPhase({ kind: 'result', product });
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Could not analyze photo.';
+      const aborted = e instanceof DOMException && e.name === 'AbortError';
+      const message = aborted
+        ? 'Analysis took too long. Check your connection and try again.'
+        : e instanceof Error ? e.message : 'Could not analyze photo.';
       setPhase({ kind: 'error', message, previewUrl });
+    } finally {
+      clearTimeout(timeout);
     }
   }
+
 
   if (phase.kind === 'result') {
     return <ResultClient product={phase.product} />;
@@ -209,6 +222,41 @@ function PreviewImage({ url, blurred }: { url: string; blurred?: boolean }) {
       style={{ filter: blurred ? 'blur(12px) brightness(0.55)' : 'none' }}
     />
   );
+}
+
+async function compressImage(
+  file: File,
+  maxDim = 1280,
+  quality = 0.82,
+): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Could not decode image'));
+      i.src = url;
+    });
+    const longest = Math.max(img.width, img.height);
+    const ratio = longest > maxDim ? maxDim / longest : 1;
+    const w = Math.round(img.width * ratio);
+    const h = Math.round(img.height * ratio);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context unavailable');
+    ctx.drawImage(img, 0, 0, w, h);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        b => b ? resolve(b) : reject(new Error('toBlob returned null')),
+        'image/jpeg',
+        quality,
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function Spinner() {
