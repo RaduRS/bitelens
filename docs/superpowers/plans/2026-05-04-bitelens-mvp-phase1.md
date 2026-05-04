@@ -73,7 +73,7 @@ npm install drizzle-orm @neondatabase/serverless @zxing/browser idb ulid
 - [ ] **Step 3: Install dev deps**
 
 ```bash
-npm install -D drizzle-kit vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @types/react@19 dotenv
+npm install -D drizzle-kit vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @types/react@19 dotenv @vitejs/plugin-react vite-tsconfig-paths @testing-library/dom
 ```
 
 - [ ] **Step 4: Add scripts to `package.json`**
@@ -98,17 +98,17 @@ Replace the `scripts` block with:
 
 ```ts
 import { defineConfig } from 'vitest/config';
-import path from 'node:path';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+  plugins: [tsconfigPaths(), react()],
   test: {
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
-  },
-  resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    passWithNoTests: true,
   },
 });
 ```
