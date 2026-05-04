@@ -16,6 +16,8 @@ import { ReasonRow } from '@/components/result/ReasonRow';
 import { FlagChip } from '@/components/result/FlagChip';
 import { NutritionBlock } from '@/components/result/NutritionBlock';
 import { AdditiveRow } from '@/components/result/AdditiveRow';
+import { BenefitsRow } from '@/components/result/BenefitsRow';
+import { NoBenefits } from '@/components/result/NoBenefits';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { ALLERGEN_LABELS } from '@/fixtures/profile-options';
 import { useProfile } from '@/hooks/useProfile';
@@ -115,6 +117,15 @@ export function ResultClient({ product }: { product: Product }) {
 
       <div className="flex flex-col gap-6 px-5 pb-8">
         {matchedAllergens.length > 0 && <AllergenAlert matched={matchedAllergens} />}
+
+        {result.benefits.length > 0 ? (
+          <div>
+            <SectionLabel>Good for</SectionLabel>
+            <BenefitsRow benefits={result.benefits} />
+          </div>
+        ) : result.verdict === 'avoid' && result.score < 30 ? (
+          <NoBenefits />
+        ) : null}
 
         <div>
           <SectionLabel>Why · {result.reasons.length} signals</SectionLabel>

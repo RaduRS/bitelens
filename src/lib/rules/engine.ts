@@ -5,6 +5,7 @@ import { extractSignals } from './signals';
 import { RULES } from './registry';
 import { SEVERITY_POINTS, bandToVerdict } from './score';
 import { buildSummary } from './explanations';
+import { extractBenefits } from '@/lib/organs/evaluate';
 
 const MAX_REASONS = 5;
 
@@ -31,6 +32,7 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
   const verdict = bandToVerdict(score);
   const reasons = [...negReasons, ...posReasons].slice(0, MAX_REASONS);
   const summary = buildSummary(triggeredRuleIds, signals);
+  const benefits = extractBenefits(signals);
 
-  return { verdict, score, summary, reasons, flags, triggeredRuleIds };
+  return { verdict, score, summary, reasons, flags, triggeredRuleIds, benefits };
 }

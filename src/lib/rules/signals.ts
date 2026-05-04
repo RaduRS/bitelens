@@ -6,6 +6,7 @@ export interface SignalSet {
   proteinPerServing: number;
   fiberPerServing: number;
   satFatPerServing: number;
+  fatPerServing: number;
   kcalPerServing: number;
   additiveMaxRisk: AdditiveRisk;
   additiveCount: number;
@@ -33,6 +34,7 @@ export function extractSignals(p: Product): SignalSet {
     proteinPerServing: p.nutrition.protein,
     fiberPerServing: p.nutrition.fiber,
     satFatPerServing: p.nutrition.satFat,
+    fatPerServing: p.nutrition.fat,
     kcalPerServing: p.nutrition.kcal,
     additiveMaxRisk,
     additiveCount: p.additives.length,

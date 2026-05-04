@@ -1,4 +1,5 @@
 import type { Product } from './product';
+import type { OrganBenefit } from './organ';
 
 export type VerdictLevel = 'good' | 'caution' | 'avoid';
 export type Severity = 'low' | 'moderate' | 'high';
@@ -23,6 +24,7 @@ export interface VerdictResult {
   reasons: Reason[];
   flags: Flag[];
   triggeredRuleIds: string[];
+  benefits: OrganBenefit[];
 }
 
 export interface VerdictContext {
