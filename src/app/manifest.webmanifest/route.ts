@@ -9,8 +9,9 @@ export function GET() {
     theme_color: '#0a0a0b',
     orientation: 'portrait',
     icons: [
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/icon1', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon2', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon2', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
   return new Response(JSON.stringify(body), {
