@@ -1,5 +1,6 @@
 'use client';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface Tab {
   id: string;
@@ -49,7 +50,6 @@ const TABS: Tab[] = [
 
 export function TabBar() {
   const pathname = usePathname();
-  const router = useRouter();
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-30 flex justify-around"
@@ -64,10 +64,11 @@ export function TabBar() {
       {TABS.map(t => {
         const active = pathname === t.href || (t.href === '/' && pathname === '/');
         return (
-          <button
+          <Link
             key={t.id}
-            onClick={() => router.push(t.href)}
-            className="flex cursor-pointer flex-col items-center gap-[3px] border-0 bg-transparent"
+            href={t.href}
+            prefetch
+            className="flex flex-col items-center gap-[3px]"
             style={{
               padding: '6px 14px',
               color: active ? 'var(--color-accent)' : 'var(--color-text-dim)',
@@ -75,7 +76,7 @@ export function TabBar() {
           >
             <svg width="20" height="20" viewBox="0 0 20 20">{t.icon}</svg>
             <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.02em' }}>{t.label}</span>
-          </button>
+          </Link>
         );
       })}
     </div>

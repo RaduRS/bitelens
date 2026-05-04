@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 interface Props {
   tone: 'primary' | 'ghost';
@@ -6,15 +7,16 @@ interface Props {
   title: string;
   subtitle: string;
   icon: ReactNode;
-  onClick?: () => void;
+  href: string;
 }
 
-export function PrimaryActionCard({ tone, eyebrow, title, subtitle, icon, onClick }: Props) {
+export function PrimaryActionCard({ tone, eyebrow, title, subtitle, icon, href }: Props) {
   const isPrimary = tone === 'primary';
   return (
-    <button
-      onClick={onClick}
-      className="relative flex w-full cursor-pointer items-center gap-4 overflow-hidden text-left text-text"
+    <Link
+      href={href}
+      prefetch
+      className="relative flex w-full items-center gap-4 overflow-hidden text-left text-text"
       style={{
         padding: 20, borderRadius: 22,
         background: isPrimary
@@ -50,6 +52,6 @@ export function PrimaryActionCard({ tone, eyebrow, title, subtitle, icon, onClic
       <svg width="18" height="18" viewBox="0 0 18 18" style={{ color: 'var(--color-text-dim)' }}>
         <path d="M5 3L11 9L5 15" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </button>
+    </Link>
   );
 }

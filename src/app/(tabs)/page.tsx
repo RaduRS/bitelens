@@ -60,7 +60,7 @@ export default function HomePage() {
       <div className="flex flex-col gap-3 px-5 pt-5">
         <PrimaryActionCard
           tone="primary" eyebrow="Primary" title="Scan a barcode" subtitle="For packaged products"
-          onClick={() => router.push('/barcode')}
+          href="/barcode"
           icon={
             <svg width="20" height="20" viewBox="0 0 22 22">
               <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
@@ -74,7 +74,7 @@ export default function HomePage() {
         />
         <PrimaryActionCard
           tone="ghost" eyebrow="Visual" title="Photograph food" subtitle="Real meals & fresh items"
-          onClick={() => router.push('/photo')}
+          href="/photo"
           icon={
             <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
               <rect x="2" y="6" width="18" height="13" rx="3" stroke="currentColor" strokeWidth="1.4" />
