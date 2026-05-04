@@ -9,11 +9,13 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { RecentRow } from '@/components/product/RecentRow';
 import { useProfile } from '@/hooks/useProfile';
 import { useHistory } from '@/hooks/useHistory';
+import { useFavorites } from '@/hooks/useFavorites';
 
 export default function HomePage() {
   const router = useRouter();
   const { profile } = useProfile();
   const { scans } = useHistory();
+  const { favorites } = useFavorites();
 
   const goodCount = scans.filter(s => s.verdict === 'good').length;
   const avgScore = scans.length
@@ -119,7 +121,7 @@ export default function HomePage() {
                     swatch: s.snapshot.swatch, glyph: s.snapshot.glyph,
                     nutriScore: s.snapshot.nutriScore, ecoScore: s.snapshot.ecoScore, novaGroup: s.snapshot.novaGroup,
                     allergens: [], additives: [], nutrition: { serving: '', kcal: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, satFat: 0, fiber: 0, sodium: 0 },
-                    favorite: s.favorite,
+                    favorite: favorites.has(s.barcode),
                     verdict: s.verdict, score: s.score,
                   }}
                   onClick={() => router.push(`/result/${s.barcode}`)}

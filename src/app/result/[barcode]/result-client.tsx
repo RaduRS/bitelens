@@ -18,21 +18,32 @@ import { NutritionBlock } from '@/components/result/NutritionBlock';
 import { AdditiveRow } from '@/components/result/AdditiveRow';
 import { BenefitsRow } from '@/components/result/BenefitsRow';
 import { NoBenefits } from '@/components/result/NoBenefits';
+import { ConfidenceBar } from '@/components/result/ConfidenceBar';
 import { SectionLabel } from '@/components/ui/SectionLabel';
+import { AlternativePreviewCard } from '@/components/product/AlternativePreviewCard';
+import type { ProductPreview } from '@/lib/off/search';
 import { ALLERGEN_LABELS } from '@/fixtures/profile-options';
 import { useProfile } from '@/hooks/useProfile';
+import { useFavorites } from '@/hooks/useFavorites';
 import { evaluate } from '@/lib/rules/engine';
 import { recordScan } from '@/lib/history/storage';
 import { VERDICT } from '@/components/verdict/verdict-tokens';
+import { FavoriteButton } from '@/components/ui/FavoriteButton';
 
 const HIGHLIGHT = /sugar|syrup|maltitol|color|phosphoric|modified/i;
 
-export function ResultClient({ product }: { product: Product }) {
+export function ResultClient({
+  product, alternatives = [],
+}: {
+  product: Product; alternatives?: ProductPreview[];
+}) {
   const router = useRouter();
   const { profile, hydrated } = useProfile();
+  const { favorites, toggle: toggleFav } = useFavorites();
   const result = evaluate(product, profile);
   const v = VERDICT[result.verdict];
   const matchedAllergens = product.allergens.filter(a => profile.allergens.includes(a));
+  const isFav = favorites.has(product.id);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -42,7 +53,7 @@ export function ResultClient({ product }: { product: Product }) {
       scannedAt: Date.now(),
       verdict: result.verdict,
       score: result.score,
-      favorite: !!product.favorite,
+      favorite: false,
       snapshot: {
         brand: product.brand, name: product.name, subtitle: product.subtitle,
         swatch: product.swatch, glyph: product.glyph, type: product.type,
@@ -63,12 +74,17 @@ export function ResultClient({ product }: { product: Product }) {
         <TopBar
           onBack={() => router.push('/')}
           right={
-            <IconButton onClick={() => router.push(`/compare/${product.id}`)} aria-label="Compare">
-              <svg width="14" height="14" viewBox="0 0 14 14">
-                <rect x="1" y="3" width="5" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                <rect x="8" y="3" width="5" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
-              </svg>
-            </IconButton>
+            <>
+              <FavoriteButton active={isFav} onToggle={() => toggleFav(product.id)} />
+              {product.type === 'barcode' && (
+                <IconButton onClick={() => router.push(`/compare/${product.id}`)} aria-label="Compare">
+                  <svg width="14" height="14" viewBox="0 0 14 14">
+                    <rect x="1" y="3" width="5" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                    <rect x="8" y="3" width="5" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                  </svg>
+                </IconButton>
+              )}
+            </>
           }
         />
 
@@ -116,6 +132,9 @@ export function ResultClient({ product }: { product: Product }) {
       </div>
 
       <div className="flex flex-col gap-6 px-5 pb-8">
+        {product.type === 'photo' && product.confidence != null && (
+          <ConfidenceBar value={product.confidence} />
+        )}
         {matchedAllergens.length > 0 && <AllergenAlert matched={matchedAllergens} />}
 
         {result.benefits.length > 0 ? (
@@ -213,8 +232,26 @@ export function ResultClient({ product }: { product: Product }) {
           </div>
         </div>
 
+        {result.verdict !== 'good' && alternatives.length > 0 && (
+          <div>
+            <SectionLabel>Healthier alternatives · {alternatives.length}</SectionLabel>
+            <div
+              className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {alternatives.map(alt => (
+                <AlternativePreviewCard
+                  key={alt.id}
+                  product={alt}
+                  onClick={() => router.push(`/result/${alt.id}`)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
-          onClick={() => router.push('/barcode')}
+          onClick={() => router.push(product.type === 'photo' ? '/photo' : '/barcode')}
           className="flex w-full cursor-pointer items-center justify-center gap-2 text-bg"
           style={{
             padding: 16, border: 0, borderRadius: 14,

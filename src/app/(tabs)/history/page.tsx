@@ -5,23 +5,37 @@ import { TopBar } from '@/components/layout/TopBar';
 import { RecentRow } from '@/components/product/RecentRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useHistory } from '@/hooks/useHistory';
+import { useFavorites } from '@/hooks/useFavorites';
 import type { VerdictLevel } from '@/types/verdict';
 
-const FILTERS: { id: 'all' | VerdictLevel; label: string }[] = [
-  { id: 'all',     label: 'All' },
-  { id: 'good',    label: 'Good' },
-  { id: 'caution', label: 'Caution' },
-  { id: 'avoid',   label: 'Avoid' },
+type FilterId = 'all' | 'favorites' | VerdictLevel;
+const FILTERS: { id: FilterId; label: string }[] = [
+  { id: 'all',       label: 'All' },
+  { id: 'favorites', label: 'Favorites' },
+  { id: 'good',      label: 'Good' },
+  { id: 'caution',   label: 'Caution' },
+  { id: 'avoid',     label: 'Avoid' },
 ];
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { scans } = useHistory();
+  const { scans, hydrated, clear } = useHistory();
+  const { favorites } = useFavorites();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<typeof FILTERS[number]['id']>('all');
+  const [filter, setFilter] = useState<FilterId>('all');
+
+  async function handleClear() {
+    if (scans.length === 0) return;
+    const ok = window.confirm(`Clear all ${scans.length} scans? This cannot be undone.`);
+    if (ok) await clear();
+  }
 
   const filtered = scans.filter(s => {
-    if (filter !== 'all' && s.verdict !== filter) return false;
+    if (filter === 'favorites') {
+      if (!favorites.has(s.barcode)) return false;
+    } else if (filter !== 'all' && s.verdict !== filter) {
+      return false;
+    }
     if (q) {
       const needle = q.toLowerCase();
       if (!s.snapshot.name.toLowerCase().includes(needle) && !s.snapshot.brand.toLowerCase().includes(needle)) return false;
@@ -31,7 +45,24 @@ export default function HistoryPage() {
 
   return (
     <div className="flex h-full flex-col" style={{ paddingBottom: 72 }}>
-      <TopBar title="History" right={<div style={{ width: 36, height: 36 }} />} />
+      <TopBar
+        title="History"
+        right={
+          scans.length > 0 ? (
+            <button
+              onClick={handleClear}
+              className="cursor-pointer font-mono uppercase text-text-dim"
+              style={{
+                background: 'transparent', border: 0, padding: '4px 8px',
+                fontSize: 11, letterSpacing: '0.1em',
+              }}
+              aria-label="Clear all history"
+            >Clear</button>
+          ) : (
+            <div style={{ width: 36, height: 36 }} />
+          )
+        }
+      />
       <div className="px-5 pt-2 pb-4">
         <div
           className="flex items-center gap-2.5 bg-surface"
@@ -69,7 +100,12 @@ export default function HistoryPage() {
         ))}
       </div>
       <div className="flex-1 overflow-y-auto px-5 pb-6">
-        {filtered.length > 0 ? (
+        {!hydrated ? (
+          <div
+            className="bg-surface"
+            style={{ borderRadius: 16, padding: 32, border: '0.5px solid rgba(255,255,255,0.06)' }}
+          />
+        ) : filtered.length > 0 ? (
           <div
             className="overflow-hidden bg-surface"
             style={{ borderRadius: 16, border: '0.5px solid rgba(255,255,255,0.06)' }}
@@ -87,7 +123,7 @@ export default function HistoryPage() {
                     nutriScore: s.snapshot.nutriScore, ecoScore: s.snapshot.ecoScore, novaGroup: s.snapshot.novaGroup,
                     allergens: [], additives: [],
                     nutrition: { serving: '', kcal: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, satFat: 0, fiber: 0, sodium: 0 },
-                    favorite: s.favorite, verdict: s.verdict, score: s.score,
+                    favorite: favorites.has(s.barcode), verdict: s.verdict, score: s.score,
                   }}
                   onClick={() => router.push(`/result/${s.barcode}`)}
                   showFav
@@ -97,8 +133,12 @@ export default function HistoryPage() {
           </div>
         ) : (
           <EmptyState
-            title={q ? 'No matches' : 'No recent scans yet'}
-            sub={q ? 'Try a different search.' : 'Scans will appear here automatically.'}
+            title={q ? 'No matches' : filter === 'favorites' ? 'No favorites yet' : 'No recent scans yet'}
+            sub={
+              q ? 'Try a different search.'
+              : filter === 'favorites' ? 'Tap the star on a product to favorite it.'
+              : 'Scans will appear here automatically.'
+            }
           />
         )}
       </div>

@@ -1,5 +1,7 @@
-import { ComingNext } from '@/components/ui/ComingNext';
+import { searchOFF } from '@/lib/off/search';
+import { DiscoverClient } from './discover-client';
 
-export default function DiscoverPage() {
-  return <ComingNext title="Discover" description="Browse, search, and find top-rated products. Coming in the next phase." />;
+export default async function DiscoverPage() {
+  const initialTopRated = await searchOFF({ topRated: true, limit: 12 }).catch(() => []);
+  return <DiscoverClient initialTopRated={initialTopRated} />;
 }

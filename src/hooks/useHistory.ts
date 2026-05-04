@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { listScans, setFavorite as setFavStore, type ScanEntry } from '@/lib/history/storage';
+import {
+  listScans, setFavorite as setFavStore, clearHistory as clearStore,
+  type ScanEntry,
+} from '@/lib/history/storage';
 
 export function useHistory() {
   const [scans, setScans] = useState<ScanEntry[]>([]);
@@ -20,5 +23,10 @@ export function useHistory() {
     await refresh();
   }, [scans, refresh]);
 
-  return { scans, hydrated, refresh, toggleFavorite };
+  const clear = useCallback(async () => {
+    await clearStore();
+    setScans([]);
+  }, []);
+
+  return { scans, hydrated, refresh, toggleFavorite, clear };
 }

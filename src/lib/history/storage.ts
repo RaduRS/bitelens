@@ -1,6 +1,6 @@
-import { openDB, type IDBPDatabase } from 'idb';
 import type { Product } from '@/types/product';
 import type { VerdictLevel } from '@/types/verdict';
+import { getBitelensDB, STORE_SCANS } from '@/lib/idb/db';
 
 export interface ScanEntry {
   id: string;
@@ -12,33 +12,12 @@ export interface ScanEntry {
   snapshot: Pick<Product, 'brand' | 'name' | 'subtitle' | 'swatch' | 'glyph' | 'type' | 'nutriScore' | 'ecoScore' | 'novaGroup'>;
 }
 
-const DB_NAME = 'bitelens';
-const STORE = 'scans';
 const MAX_ENTRIES = 100;
 
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-function getDB() {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('IndexedDB unavailable on server'));
-  }
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, 1, {
-      upgrade(db) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id' });
-        store.createIndex('byScannedAt', 'scannedAt');
-        store.createIndex('byBarcode', 'barcode');
-      },
-    });
-  }
-  return dbPromise;
-}
-
 export async function recordScan(entry: ScanEntry): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE, entry);
-  // Cap to MAX_ENTRIES, oldest first.
-  const tx = db.transaction(STORE, 'readwrite');
+  const db = await getBitelensDB();
+  await db.put(STORE_SCANS, entry);
+  const tx = db.transaction(STORE_SCANS, 'readwrite');
   const idx = tx.store.index('byScannedAt');
   const all = await idx.getAllKeys();
   if (all.length > MAX_ENTRIES) {
@@ -50,19 +29,19 @@ export async function recordScan(entry: ScanEntry): Promise<void> {
 }
 
 export async function listScans(): Promise<ScanEntry[]> {
-  const db = await getDB();
-  const all = await db.getAll(STORE) as ScanEntry[];
+  const db = await getBitelensDB();
+  const all = await db.getAll(STORE_SCANS) as ScanEntry[];
   return all.sort((a, b) => b.scannedAt - a.scannedAt);
 }
 
 export async function setFavorite(id: string, favorite: boolean): Promise<void> {
-  const db = await getDB();
-  const entry = await db.get(STORE, id) as ScanEntry | undefined;
+  const db = await getBitelensDB();
+  const entry = await db.get(STORE_SCANS, id) as ScanEntry | undefined;
   if (!entry) return;
-  await db.put(STORE, { ...entry, favorite });
+  await db.put(STORE_SCANS, { ...entry, favorite });
 }
 
 export async function clearHistory(): Promise<void> {
-  const db = await getDB();
-  await db.clear(STORE);
+  const db = await getBitelensDB();
+  await db.clear(STORE_SCANS);
 }
