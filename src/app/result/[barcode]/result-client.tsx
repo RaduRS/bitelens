@@ -55,6 +55,7 @@ export function ResultClient({
       snapshot: {
         brand: product.brand, name: product.name, subtitle: product.subtitle,
         swatch: product.swatch, glyph: product.glyph, type: product.type,
+        imageUrl: product.imageUrl,
         nutriScore: product.nutriScore, ecoScore: product.ecoScore, novaGroup: product.novaGroup,
       },
     });

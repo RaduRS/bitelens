@@ -34,6 +34,7 @@ export interface Product {
   subtitle: string;
   swatch: string;
   glyph: string;
+  imageUrl?: string | null;
   ingredients?: string[];
   components?: string[];
   allergens: AllergenKey[];

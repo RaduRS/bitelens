@@ -7,6 +7,9 @@ interface OFFRaw {
     product_name?: string;
     brands?: string;
     quantity?: string;
+    image_front_small_url?: string;
+    image_small_url?: string;
+    image_url?: string;
     ingredients_text?: string;
     allergens_tags?: string[];
     additives_tags?: string[];
@@ -63,6 +66,8 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     .map(t => t.replace(/^en:/i, '').toUpperCase())
     .map(code => lookupAdditive(code) ?? { code, name: code, risk: 'low' as const, detail: 'No detailed info on file.' });
 
+  const imageUrl = p.image_front_small_url || p.image_small_url || p.image_url || null;
+
   return {
     id: barcode,
     type: 'barcode',
@@ -71,6 +76,7 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     subtitle: p.quantity ?? '',
     swatch: '#7a8a5e',
     glyph: (p.product_name ?? '?').slice(0, 1).toUpperCase(),
+    imageUrl,
     ingredients,
     allergens: Array.from(new Set(allergens)),
     additives,

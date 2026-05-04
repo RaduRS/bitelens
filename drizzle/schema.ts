@@ -5,6 +5,7 @@ export const products = pgTable('products', {
   brand: text('brand').notNull(),
   name: text('name').notNull(),
   subtitle: text('subtitle').notNull(),
+  imageUrl: text('image_url'),
   ingredients: jsonb('ingredients').$type<string[]>().notNull(),
   allergens: jsonb('allergens').$type<string[]>().notNull(),
   additives: jsonb('additives').$type<unknown[]>().notNull(),

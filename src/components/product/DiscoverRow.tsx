@@ -12,6 +12,8 @@ export function DiscoverRow({
   const thumbProduct = {
     swatch: '#7a8a5e',
     glyph: (product.name[0] ?? '?').toUpperCase(),
+    imageUrl: product.imageUrl,
+    name: product.name,
   };
   return (
     <button

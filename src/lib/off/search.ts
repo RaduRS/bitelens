@@ -4,6 +4,7 @@ export interface ProductPreview {
   id: string;
   brand: string;
   name: string;
+  imageUrl: string | null;
   nutriScore: NutriScoreGrade | null;
   ecoScore: NutriScoreGrade | null;
   novaGroup: NovaGroup | null;
@@ -13,6 +14,9 @@ interface OFFRow {
   code?: string;
   product_name?: string;
   brands?: string;
+  image_front_small_url?: string;
+  image_small_url?: string;
+  image_url?: string;
   nutriscore_grade?: string;
   ecoscore_grade?: string;
   nova_group?: number | string;
@@ -23,7 +27,7 @@ interface OFFSearchResponse {
   count?: number;
 }
 
-const FIELDS = 'code,product_name,brands,nutriscore_grade,ecoscore_grade,nova_group';
+const FIELDS = 'code,product_name,brands,image_front_small_url,image_small_url,image_url,nutriscore_grade,ecoscore_grade,nova_group';
 
 const HEADERS = {
   'User-Agent': 'BiteLens/1.0 (https://github.com/RaduRS/bitelens)',
@@ -47,6 +51,7 @@ export function rowsToPreviews(rows: OFFRow[]): ProductPreview[] {
       id: r.code as string,
       brand: ((r.brands ?? '').split(',')[0] ?? '').trim() || 'Unknown',
       name: (r.product_name ?? '').trim(),
+      imageUrl: r.image_front_small_url || r.image_small_url || r.image_url || null,
       nutriScore: pickGrade(r.nutriscore_grade),
       ecoScore: pickGrade(r.ecoscore_grade),
       novaGroup: pickNova(r.nova_group),

@@ -18,7 +18,15 @@ export function AlternativePreviewCard({
       }}
     >
       <div className="flex items-center justify-between">
-        <ProductThumb product={{ swatch: '#7a8a5e', glyph: (product.name[0] ?? '?').toUpperCase() }} size={40} />
+        <ProductThumb
+          product={{
+            swatch: '#7a8a5e',
+            glyph: (product.name[0] ?? '?').toUpperCase(),
+            imageUrl: product.imageUrl,
+            name: product.name,
+          }}
+          size={40}
+        />
         {product.nutriScore && <NutriScoreBadge grade={product.nutriScore} />}
       </div>
       <div>

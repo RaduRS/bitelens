@@ -9,7 +9,7 @@ export interface ScanEntry {
   verdict: VerdictLevel;
   score: number;
   favorite: boolean;
-  snapshot: Pick<Product, 'brand' | 'name' | 'subtitle' | 'swatch' | 'glyph' | 'type' | 'nutriScore' | 'ecoScore' | 'novaGroup'>;
+  snapshot: Pick<Product, 'brand' | 'name' | 'subtitle' | 'swatch' | 'glyph' | 'type' | 'nutriScore' | 'ecoScore' | 'novaGroup' | 'imageUrl'>;
 }
 
 const MAX_ENTRIES = 100;

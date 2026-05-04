@@ -16,7 +16,24 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
     .from(schema.products)
     .where(eq(schema.products.barcode, barcode))
     .limit(1);
-  if (cached.length > 0) return rowToProduct(cached[0]);
+  if (cached.length > 0) {
+    const product = rowToProduct(cached[0]);
+    // Lazy backfill: rows inserted before the imageUrl column existed have no
+    // image. Refetch once to populate it. We update DB and return the fresh
+    // product so the user sees the image on this same render.
+    if (!product.imageUrl) {
+      const fresh = await fetchProductFromOFF(barcode).catch(() => null);
+      if (fresh?.imageUrl) {
+        await db
+          .update(schema.products)
+          .set({ imageUrl: fresh.imageUrl, updatedAt: new Date() })
+          .where(eq(schema.products.barcode, barcode))
+          .catch(() => {});
+        return { ...product, imageUrl: fresh.imageUrl };
+      }
+    }
+    return product;
+  }
 
   const fresh = await fetchProductFromOFF(barcode);
   if (!fresh) return null;
@@ -29,6 +46,7 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
       brand: fresh.brand,
       name: fresh.name,
       subtitle: fresh.subtitle,
+      imageUrl: fresh.imageUrl ?? null,
       ingredients: fresh.ingredients ?? [],
       allergens: fresh.allergens,
       additives: fresh.additives,
@@ -55,6 +73,7 @@ function rowToProduct(row: typeof schema.products.$inferSelect): Product {
     subtitle: row.subtitle,
     swatch: '#7a8a5e',
     glyph: row.name.slice(0, 1).toUpperCase(),
+    imageUrl: row.imageUrl,
     ingredients: row.ingredients,
     allergens: row.allergens as Product['allergens'],
     additives,
