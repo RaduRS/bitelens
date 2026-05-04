@@ -1,18 +1,14 @@
-import type { AllergenKey } from './product';
-
-export type Diet = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian';
+export type Diet = 'none' | 'keto' | 'low_carb' | 'carnivore' | 'anti_inflammatory';
 export type GoalKey = 'low_sugar' | 'low_sodium' | 'high_protein' | 'less_processed' | 'high_fiber';
 
 export interface Profile {
   diet: Diet;
-  allergens: AllergenKey[];
   goals: GoalKey[];
-  schemaVersion: 1;
+  schemaVersion: 2;
 }
 
 export const DEFAULT_PROFILE: Profile = {
-  diet: 'omnivore',
-  allergens: [],
+  diet: 'none',
   goals: [],
-  schemaVersion: 1,
+  schemaVersion: 2,
 };

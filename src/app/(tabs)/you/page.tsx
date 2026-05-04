@@ -2,18 +2,11 @@
 import { TopBar } from '@/components/layout/TopBar';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { useProfile } from '@/hooks/useProfile';
-import { ALLERGEN_LABELS, DIET_OPTIONS, GOAL_OPTIONS } from '@/fixtures/profile-options';
-import type { AllergenKey, GoalKey } from '@/types/product';
+import { DIET_OPTIONS, GOAL_OPTIONS } from '@/fixtures/profile-options';
+import type { GoalKey } from '@/types/product';
 
 export default function YouPage() {
   const { profile, setProfile } = useProfile();
-
-  const toggleAllergen = (a: AllergenKey) => {
-    const next = profile.allergens.includes(a)
-      ? profile.allergens.filter(x => x !== a)
-      : [...profile.allergens, a];
-    setProfile({ ...profile, allergens: next });
-  };
 
   const toggleGoal = (g: GoalKey) => {
     const next = profile.goals.includes(g)
@@ -52,45 +45,43 @@ export default function YouPage() {
 
         <div>
           <SectionLabel>Diet</SectionLabel>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-2">
             {DIET_OPTIONS.map(d => {
               const active = profile.diet === d.id;
               return (
                 <button
                   key={d.id}
                   onClick={() => setProfile({ ...profile, diet: d.id })}
-                  className="cursor-pointer text-left"
+                  className="flex cursor-pointer items-center gap-3 text-left"
                   style={{
-                    padding: 12, borderRadius: 12,
+                    padding: '12px 14px', borderRadius: 12,
                     background: active ? 'color-mix(in oklab, var(--color-accent) 14%, transparent)' : 'var(--color-surface)',
-                    border: active ? '0.5px solid color-mix(in oklab, var(--color-accent) 40%, transparent)' : '0.5px solid rgba(255,255,255,0.07)',
+                    border: active
+                      ? '0.5px solid color-mix(in oklab, var(--color-accent) 40%, transparent)'
+                      : '0.5px solid rgba(255,255,255,0.07)',
                     color: active ? 'var(--color-accent)' : 'var(--color-text)',
-                    fontSize: 14, fontWeight: 500,
                   }}
-                >{d.label}</button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <SectionLabel>Allergens to avoid</SectionLabel>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(ALLERGEN_LABELS) as AllergenKey[]).map(a => {
-              const active = profile.allergens.includes(a);
-              return (
-                <button
-                  key={a}
-                  onClick={() => toggleAllergen(a)}
-                  className="cursor-pointer"
-                  style={{
-                    padding: '8px 14px', borderRadius: 999,
-                    background: active ? 'color-mix(in oklab, var(--color-red) 14%, transparent)' : 'var(--color-surface)',
-                    border: active ? '0.5px solid color-mix(in oklab, var(--color-red) 40%, transparent)' : '0.5px solid rgba(255,255,255,0.07)',
-                    color: active ? 'var(--color-red)' : 'var(--color-text)',
-                    fontSize: 13, fontWeight: 500,
-                  }}
-                >{ALLERGEN_LABELS[a]}</button>
+                >
+                  <div
+                    className="flex items-center justify-center"
+                    style={{
+                      width: 16, height: 16, borderRadius: '50%',
+                      border: active ? '4px solid var(--color-accent)' : '1.4px solid rgba(255,255,255,0.25)',
+                      boxSizing: 'border-box', flexShrink: 0,
+                    }}
+                  />
+                  <div className="flex-1">
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{d.label}</div>
+                    {d.sub && (
+                      <div
+                        style={{
+                          marginTop: 1, fontSize: 11,
+                          color: active ? 'color-mix(in oklab, var(--color-accent) 70%, var(--color-text-dim))' : 'var(--color-text-dim)',
+                        }}
+                      >{d.sub}</div>
+                    )}
+                  </div>
+                </button>
               );
             })}
           </div>

@@ -4,16 +4,13 @@ import { TopBar } from '@/components/layout/TopBar';
 import { IconButton } from '@/components/ui/IconButton';
 import { PrimaryActionCard } from '@/components/home/PrimaryActionCard';
 import { QuickStats } from '@/components/home/QuickStats';
-import { ProfileWatchBanner } from '@/components/home/ProfileWatchBanner';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { RecentRow } from '@/components/product/RecentRow';
-import { useProfile } from '@/hooks/useProfile';
 import { useHistory } from '@/hooks/useHistory';
 import { useFavorites } from '@/hooks/useFavorites';
 
 export default function HomePage() {
   const router = useRouter();
-  const { profile } = useProfile();
   const { scans } = useHistory();
   const { favorites } = useFavorites();
 
@@ -86,8 +83,6 @@ export default function HomePage() {
           }
         />
       </div>
-
-      <ProfileWatchBanner profile={profile} />
 
       <div className="flex-1 px-5 pt-6">
         <SectionLabel

@@ -34,10 +34,18 @@ describe('evaluate', () => {
     expect(r.reasons.some(x => x.kind === 'pos')).toBe(true);
   });
 
-  it('allergen profile triggers allergen_match flag', () => {
-    const r = evaluate(PRODUCT_INDEX.p_protein_bar, { ...DEFAULT_PROFILE, allergens: ['nuts'] });
-    expect(r.triggeredRuleIds).toContain('allergen_match');
-    expect(r.flags.some(f => f.label === 'Allergen')).toBe(true);
+  it('keto diet penalises high-carb products', () => {
+    const r = evaluate(PRODUCT_INDEX.p_strawberry_yogurt, { ...DEFAULT_PROFILE, diet: 'keto' });
+    expect(r.triggeredRuleIds).toContain('diet_keto_breach');
+  });
+
+  it('low-carb diet only flags clearly carb-heavy products', () => {
+    // Cola at 39g carbs/serving should breach.
+    const lc = evaluate(PRODUCT_INDEX.p_cola, { ...DEFAULT_PROFILE, diet: 'low_carb' });
+    expect(lc.triggeredRuleIds).toContain('diet_low_carb_breach');
+    // Oat crisps at 18g carbs/serving should not.
+    const ok = evaluate(PRODUCT_INDEX.p_oat_crisps, { ...DEFAULT_PROFILE, diet: 'low_carb' });
+    expect(ok.triggeredRuleIds).not.toContain('diet_low_carb_breach');
   });
 
   it('caps photo products at 75 even when no negative rule fires', () => {

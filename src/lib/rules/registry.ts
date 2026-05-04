@@ -165,16 +165,7 @@ export const RULES: Rule[] = [
     }),
   },
 
-  // ── Personal profile ──────────────────────────────────────────
-  {
-    id: 'allergen_match',
-    severity: 'high',
-    when: (s, profile) => s.containsAllergens.some(a => profile.allergens.includes(a)),
-    build: (_s, p) => ({
-      reason: { kind: 'neg', text: `Contains allergens you avoid` },
-      flag:   { tone: 'avoid', label: 'Allergen', detail: p.allergens.join(', ') },
-    }),
-  },
+  // ── Personal goals ────────────────────────────────────────────
   {
     id: 'goal_low_sugar_breach',
     severity: 'low',
@@ -189,6 +180,52 @@ export const RULES: Rule[] = [
     when: (s, profile) => profile.goals.includes('less_processed') && (s.novaGroup ?? 0) >= 3,
     build: s => ({
       reason: { kind: 'neg', text: `Processing level (NOVA ${s.novaGroup}) above your goal` },
+    }),
+  },
+
+  // ── Diet preference ───────────────────────────────────────────
+  {
+    id: 'diet_keto_severe_breach',
+    severity: 'high',
+    when: (s, profile) => profile.diet === 'keto' && s.carbsPerServing >= 25,
+    build: s => ({
+      reason: { kind: 'neg', text: `Off-keto — ${s.carbsPerServing}g carbs per serving` },
+      flag:   { tone: 'avoid', label: 'Off-keto', detail: `${s.carbsPerServing}g carbs` },
+    }),
+  },
+  {
+    id: 'diet_keto_breach',
+    severity: 'moderate',
+    when: (s, profile) => profile.diet === 'keto' && s.carbsPerServing >= 10 && s.carbsPerServing < 25,
+    build: s => ({
+      reason: { kind: 'neg', text: `Borderline keto — ${s.carbsPerServing}g carbs per serving` },
+    }),
+  },
+  {
+    id: 'diet_low_carb_breach',
+    severity: 'moderate',
+    when: (s, profile) => profile.diet === 'low_carb' && s.carbsPerServing >= 25,
+    build: s => ({
+      reason: { kind: 'neg', text: `High carb for low-carb — ${s.carbsPerServing}g per serving` },
+    }),
+  },
+  {
+    id: 'diet_carnivore_breach',
+    severity: 'moderate',
+    when: (s, profile) =>
+      profile.diet === 'carnivore' &&
+      (s.sugarPerServing >= 5 || s.carbsPerServing >= 15),
+    build: s => ({
+      reason: { kind: 'neg', text: `Off-carnivore — ${s.carbsPerServing}g carbs, ${s.sugarPerServing}g sugar` },
+    }),
+  },
+  {
+    id: 'diet_anti_inflammatory_breach',
+    severity: 'moderate',
+    when: (s, profile) => profile.diet === 'anti_inflammatory' && containsSeedOils(s.ingredientsLower),
+    build: () => ({
+      reason: { kind: 'neg', text: 'Contains seed oils — inflammatory for some' },
+      flag:   { tone: 'caution', label: 'Seed oil' },
     }),
   },
 
@@ -224,3 +261,37 @@ export const RULES: Rule[] = [
     build: () => ({ reason: { kind: 'pos', text: 'Low sugar' } }),
   },
 ];
+
+// Multilingual seed-oil patterns. OFF ingredient text comes in product locale;
+// we cover EN/FR/ES/DE/IT for the oils most commonly flagged in anti-inflammatory
+// diets. Add more as we encounter them.
+const SEED_OIL_PATTERNS = [
+  // English
+  'sunflower oil', 'soybean oil', 'soya oil', 'soy oil',
+  'corn oil', 'canola oil', 'rapeseed oil',
+  'cottonseed oil', 'safflower oil', 'grapeseed oil', 'rice bran oil',
+  'palm oil', 'palm kernel oil',
+  // French
+  'huile de tournesol', 'huile de soja', 'huile de maïs', 'huile de mais',
+  'huile de colza', 'huile de coton', 'huile de carthame',
+  'huile de pépins de raisin', 'huile de pepins de raisin',
+  'huile de palme', 'huile de palmiste',
+  // Spanish
+  'aceite de girasol', 'aceite de soja', 'aceite de maíz', 'aceite de maiz',
+  'aceite de colza', 'aceite de algodón', 'aceite de algodon',
+  'aceite de cártamo', 'aceite de cartamo', 'aceite de palma',
+  // German
+  'sonnenblumenöl', 'sonnenblumenoel', 'sojaöl', 'sojaoel',
+  'maisöl', 'maisoel', 'rapsöl', 'rapsoel',
+  'baumwollsamenöl', 'baumwollsamenoel', 'distelöl', 'disteloel',
+  'palmöl', 'palmoel', 'palmkernöl', 'palmkernoel',
+  // Italian
+  'olio di girasole', 'olio di soia', 'olio di mais', 'olio di colza',
+  'olio di palma', 'olio di palmisti', 'olio di vinaccioli',
+];
+
+function containsSeedOils(ingredientsLower: string[]): boolean {
+  return ingredientsLower.some(ing =>
+    SEED_OIL_PATTERNS.some(pat => ing.includes(pat)),
+  );
+}

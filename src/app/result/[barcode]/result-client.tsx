@@ -11,7 +11,6 @@ import { VerdictRing } from '@/components/verdict/VerdictRing';
 import { NutriScoreBadge } from '@/components/badges/NutriScoreBadge';
 import { NovaPill } from '@/components/badges/NovaPill';
 import { EcoScoreBadge } from '@/components/badges/EcoScoreBadge';
-import { AllergenAlert } from '@/components/result/AllergenAlert';
 import { ReasonRow } from '@/components/result/ReasonRow';
 import { FlagChip } from '@/components/result/FlagChip';
 import { NutritionBlock } from '@/components/result/NutritionBlock';
@@ -42,7 +41,6 @@ export function ResultClient({
   const { favorites, toggle: toggleFav } = useFavorites();
   const result = evaluate(product, profile);
   const v = VERDICT[result.verdict];
-  const matchedAllergens = product.allergens.filter(a => profile.allergens.includes(a));
   const isFav = favorites.has(product.id);
 
   useEffect(() => {
@@ -135,7 +133,6 @@ export function ResultClient({
         {product.type === 'photo' && product.confidence != null && (
           <ConfidenceBar value={product.confidence} />
         )}
-        {matchedAllergens.length > 0 && <AllergenAlert matched={matchedAllergens} />}
 
         {result.benefits.length > 0 ? (
           <div>
@@ -195,21 +192,18 @@ export function ResultClient({
           <div>
             <SectionLabel>Allergens</SectionLabel>
             <div className="flex flex-wrap gap-2">
-              {product.allergens.map(a => {
-                const isMatch = matchedAllergens.includes(a);
-                return (
-                  <div
-                    key={a}
-                    style={{
-                      padding: '6px 12px', borderRadius: 999,
-                      background: isMatch ? 'color-mix(in oklab, var(--color-red) 14%, transparent)' : 'rgba(255,255,255,0.04)',
-                      border: isMatch ? '0.5px solid color-mix(in oklab, var(--color-red) 35%, transparent)' : '0.5px solid rgba(255,255,255,0.07)',
-                      color: isMatch ? 'var(--color-red)' : 'var(--color-text)',
-                      fontSize: 12, fontWeight: 500,
-                    }}
-                  >{ALLERGEN_LABELS[a]}</div>
-                );
-              })}
+              {product.allergens.map(a => (
+                <div
+                  key={a}
+                  style={{
+                    padding: '6px 12px', borderRadius: 999,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '0.5px solid rgba(255,255,255,0.07)',
+                    color: 'var(--color-text)',
+                    fontSize: 12, fontWeight: 500,
+                  }}
+                >{ALLERGEN_LABELS[a]}</div>
+              ))}
             </div>
           </div>
         )}

@@ -14,8 +14,11 @@ export function buildSummary(triggered: string[], s: SignalSet): string {
   if (triggered.includes('additive_high_risk')) {
     return 'Contains a concerning additive.';
   }
-  if (triggered.includes('allergen_match')) {
-    return 'Contains an allergen you watch.';
+  if (triggered.includes('diet_keto_severe_breach') || triggered.includes('diet_keto_breach')) {
+    return 'Off-track for your keto diet.';
+  }
+  if (triggered.includes('diet_anti_inflammatory_breach')) {
+    return 'Contains seed oils — flagged for your diet.';
   }
   if (any(triggered, ANY_SUGAR_IDS)) {
     return 'Sweetened more than ideal.';
