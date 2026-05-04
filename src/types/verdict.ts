@@ -2,7 +2,7 @@ import type { Product } from './product';
 import type { OrganBenefit } from './organ';
 
 export type VerdictLevel = 'good' | 'caution' | 'avoid';
-export type Severity = 'low' | 'moderate' | 'high';
+export type Severity = 'low' | 'moderate' | 'high' | 'severe';
 export type ReasonKind = 'pos' | 'neg' | 'neu';
 export type FlagTone = 'good' | 'caution' | 'avoid';
 

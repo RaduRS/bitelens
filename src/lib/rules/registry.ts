@@ -16,17 +16,27 @@ export interface Rule {
 }
 
 export const RULES: Rule[] = [
+  // ── Sugar (graduated) ─────────────────────────────────────────
   {
-    id: 'high_added_sugar',
+    id: 'sugar_severe',
+    severity: 'severe',
+    when: s => s.sugarPerServing >= 30,
+    build: s => ({
+      reason: { kind: 'neg', text: `Excessive added sugar — ${s.sugarPerServing}g per serving` },
+      flag:   { tone: 'avoid', label: 'Excessive sugar', detail: `${s.sugarPerServing}g` },
+    }),
+  },
+  {
+    id: 'sugar_high',
     severity: 'high',
-    when: s => s.sugarPerServing >= 15,
+    when: s => s.sugarPerServing >= 15 && s.sugarPerServing < 30,
     build: s => ({
       reason: { kind: 'neg', text: `High added sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'High sugar', detail: `${s.sugarPerServing}g` },
     }),
   },
   {
-    id: 'moderate_added_sugar',
+    id: 'sugar_moderate',
     severity: 'moderate',
     when: s => s.sugarPerServing >= 10 && s.sugarPerServing < 15,
     build: s => ({
@@ -35,14 +45,63 @@ export const RULES: Rule[] = [
     }),
   },
   {
-    id: 'high_sodium',
-    severity: 'moderate',
-    when: s => s.sodiumPerServing >= 600,
+    id: 'sugar_mild',
+    severity: 'low',
+    when: s => s.sugarPerServing >= 5 && s.sugarPerServing < 10,
     build: s => ({
-      reason: { kind: 'neg', text: `High sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'caution', label: 'High sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `Some added sugar — ${s.sugarPerServing}g per serving` },
     }),
   },
+
+  // ── Sodium (graduated) ────────────────────────────────────────
+  {
+    id: 'sodium_severe',
+    severity: 'severe',
+    when: s => s.sodiumPerServing >= 1500,
+    build: s => ({
+      reason: { kind: 'neg', text: `Excessive sodium — ${s.sodiumPerServing}mg per serving` },
+      flag:   { tone: 'avoid', label: 'Excessive sodium', detail: `${s.sodiumPerServing}mg` },
+    }),
+  },
+  {
+    id: 'sodium_high',
+    severity: 'high',
+    when: s => s.sodiumPerServing >= 800 && s.sodiumPerServing < 1500,
+    build: s => ({
+      reason: { kind: 'neg', text: `High sodium — ${s.sodiumPerServing}mg per serving` },
+      flag:   { tone: 'avoid', label: 'High sodium', detail: `${s.sodiumPerServing}mg` },
+    }),
+  },
+  {
+    id: 'sodium_moderate',
+    severity: 'moderate',
+    when: s => s.sodiumPerServing >= 500 && s.sodiumPerServing < 800,
+    build: s => ({
+      reason: { kind: 'neg', text: `Moderate sodium — ${s.sodiumPerServing}mg per serving` },
+      flag:   { tone: 'caution', label: 'Sodium', detail: `${s.sodiumPerServing}mg` },
+    }),
+  },
+
+  // ── Saturated fat (graduated) ─────────────────────────────────
+  {
+    id: 'satfat_high',
+    severity: 'high',
+    when: s => s.satFatPerServing >= 8,
+    build: s => ({
+      reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPerServing}g per serving` },
+      flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPerServing}g` },
+    }),
+  },
+  {
+    id: 'satfat_moderate',
+    severity: 'moderate',
+    when: s => s.satFatPerServing >= 5 && s.satFatPerServing < 8,
+    build: s => ({
+      reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPerServing}g per serving` },
+    }),
+  },
+
+  // ── Additives ─────────────────────────────────────────────────
   {
     id: 'additive_high_risk',
     severity: 'high',
@@ -62,22 +121,51 @@ export const RULES: Rule[] = [
     }),
   },
   {
+    // Stacking: multiple additives compounds processing concern even if each is "low".
+    id: 'additive_count_stacked',
+    severity: 'low',
+    when: s => s.additiveCount >= 3,
+    build: s => ({
+      reason: { kind: 'neg', text: `${s.additiveCount} additives in the ingredient list` },
+    }),
+  },
+
+  // ── Processing & official scores ──────────────────────────────
+  {
     id: 'ultra_processed',
-    severity: 'moderate',
+    severity: 'high',
     when: s => s.novaGroup === 4,
     build: () => ({
       reason: { kind: 'neg', text: 'Ultra-processed (NOVA group 4)' },
-      flag:   { tone: 'caution', label: 'Ultra-processed', detail: 'NOVA 4' },
+      flag:   { tone: 'avoid', label: 'Ultra-processed', detail: 'NOVA 4' },
     }),
   },
   {
-    id: 'nutri_score_de',
-    severity: 'moderate',
-    when: s => s.nutriScore === 'D' || s.nutriScore === 'E',
-    build: s => ({
-      reason: { kind: 'neg', text: `Nutri-Score ${s.nutriScore}` },
+    id: 'processed_nova3',
+    severity: 'low',
+    when: s => s.novaGroup === 3,
+    build: () => ({
+      reason: { kind: 'neg', text: 'Processed (NOVA group 3)' },
     }),
   },
+  {
+    id: 'nutri_score_e',
+    severity: 'high',
+    when: s => s.nutriScore === 'E',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Nutri-Score E — among the worst rated' },
+    }),
+  },
+  {
+    id: 'nutri_score_d',
+    severity: 'moderate',
+    when: s => s.nutriScore === 'D',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Nutri-Score D' },
+    }),
+  },
+
+  // ── Personal profile ──────────────────────────────────────────
   {
     id: 'allergen_match',
     severity: 'high',
@@ -103,6 +191,8 @@ export const RULES: Rule[] = [
       reason: { kind: 'neg', text: `Processing level (NOVA ${s.novaGroup}) above your goal` },
     }),
   },
+
+  // ── Positives (no penalty) ────────────────────────────────────
   {
     id: 'pos_no_additives',
     severity: 'pos',
@@ -116,6 +206,12 @@ export const RULES: Rule[] = [
     build: s => ({ reason: { kind: 'pos', text: `Good protein content (${s.proteinPerServing}g)` } }),
   },
   {
+    id: 'pos_high_fiber',
+    severity: 'pos',
+    when: s => s.fiberPerServing >= 5,
+    build: s => ({ reason: { kind: 'pos', text: `Good fiber (${s.fiberPerServing}g)` } }),
+  },
+  {
     id: 'pos_nutri_a_b',
     severity: 'pos',
     when: s => s.nutriScore === 'A' || s.nutriScore === 'B',
@@ -124,7 +220,7 @@ export const RULES: Rule[] = [
   {
     id: 'pos_low_sugar',
     severity: 'pos',
-    when: s => s.sugarPerServing < 5 && (s.kcalPerServing > 0),
+    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0,
     build: () => ({ reason: { kind: 'pos', text: 'Low sugar' } }),
   },
 ];

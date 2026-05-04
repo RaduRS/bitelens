@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/lib/db/client';
 import { fetchProductFromOFF } from '@/lib/off/client';
 import { extractSignals } from '@/lib/rules/signals';
-import type { Product } from '@/types/product';
+import { lookupAdditive } from '@/lib/additives/registry';
+import type { Product, Additive } from '@/types/product';
 
 export const BARCODE_RE = /^\d{6,14}$/;
 
@@ -43,6 +44,9 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
 }
 
 function rowToProduct(row: typeof schema.products.$inferSelect): Product {
+  // Re-enrich additives from the live registry so cache rows pick up new metadata.
+  const cachedAdditives = (row.additives as Additive[]) ?? [];
+  const additives = cachedAdditives.map(a => lookupAdditive(a.code) ?? a);
   return {
     id: row.barcode,
     type: 'barcode',
@@ -53,7 +57,7 @@ function rowToProduct(row: typeof schema.products.$inferSelect): Product {
     glyph: row.name.slice(0, 1).toUpperCase(),
     ingredients: row.ingredients,
     allergens: row.allergens as Product['allergens'],
-    additives: row.additives as Product['additives'],
+    additives,
     nutrition: row.nutrition as Product['nutrition'],
     nutriScore: row.nutriScore as Product['nutriScore'],
     ecoScore: row.ecoScore as Product['ecoScore'],

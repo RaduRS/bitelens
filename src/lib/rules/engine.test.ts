@@ -2,15 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { evaluate } from './engine';
 import { PRODUCT_INDEX } from '@/fixtures/sample-products';
 import { DEFAULT_PROFILE } from '@/types/profile';
+import type { Product } from '@/types/product';
 
 describe('evaluate', () => {
-  it('cola is Avoid', () => {
+  it('cola is Avoid with a near-zero score (severe sugar + bad additive + ultra-processed)', () => {
     const r = evaluate(PRODUCT_INDEX.p_cola, DEFAULT_PROFILE);
     expect(r.verdict).toBe('avoid');
-    expect(r.score).toBeLessThan(40);
-    expect(r.triggeredRuleIds).toContain('high_added_sugar');
+    expect(r.score).toBeLessThan(15);
+    expect(r.triggeredRuleIds).toContain('sugar_severe');
     expect(r.triggeredRuleIds).toContain('additive_high_risk');
     expect(r.triggeredRuleIds).toContain('ultra_processed');
+    expect(r.triggeredRuleIds).toContain('nutri_score_e');
   });
 
   it('strawberry yogurt is Caution', () => {
@@ -36,5 +38,38 @@ describe('evaluate', () => {
     const r = evaluate(PRODUCT_INDEX.p_protein_bar, { ...DEFAULT_PROFILE, allergens: ['nuts'] });
     expect(r.triggeredRuleIds).toContain('allergen_match');
     expect(r.flags.some(f => f.label === 'Allergen')).toBe(true);
+  });
+
+  it('caps photo products at 75 even when no negative rule fires', () => {
+    const photoProduct: Product = {
+      id: 'photo_test', type: 'photo', brand: '', name: 'Pristine Bowl',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Quinoa', 'Spinach', 'Avocado'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 400, protein: 12, carbs: 50, sugar: 3, fat: 14, satFat: 2, fiber: 8, sodium: 200 },
+      nutriScore: null, ecoScore: null, novaGroup: null,
+      confidence: 0.9,
+    };
+    const r = evaluate(photoProduct, DEFAULT_PROFILE);
+    expect(r.score).toBe(75);
+  });
+
+  it('caps barcode products with no Nutri-Score and no NOVA at 80', () => {
+    const product: Product = {
+      ...PRODUCT_INDEX.p_oat_crisps,
+      nutriScore: null,
+      novaGroup: null,
+    };
+    const r = evaluate(product, DEFAULT_PROFILE);
+    expect(r.score).toBeLessThanOrEqual(80);
+  });
+
+  it('caps barcode products missing one of Nutri-Score/NOVA at 90', () => {
+    const product: Product = {
+      ...PRODUCT_INDEX.p_oat_crisps,
+      nutriScore: null,
+    };
+    const r = evaluate(product, DEFAULT_PROFILE);
+    expect(r.score).toBeLessThanOrEqual(90);
   });
 });

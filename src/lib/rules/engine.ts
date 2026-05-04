@@ -3,7 +3,7 @@ import type { Profile } from '@/types/profile';
 import type { VerdictResult, Reason, Flag } from '@/types/verdict';
 import { extractSignals } from './signals';
 import { RULES } from './registry';
-import { SEVERITY_POINTS, bandToVerdict } from './score';
+import { SEVERITY_POINTS, bandToVerdict, maxScoreCap } from './score';
 import { buildSummary } from './explanations';
 import { extractBenefits } from '@/lib/organs/evaluate';
 
@@ -28,7 +28,8 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
     if (hit.flag) flags.push(hit.flag);
   }
 
-  score = Math.max(0, score);
+  const cap = maxScoreCap(signals, product);
+  score = Math.max(0, Math.min(cap, score));
   const verdict = bandToVerdict(score);
   const reasons = [...negReasons, ...posReasons].slice(0, MAX_REASONS);
   const summary = buildSummary(triggeredRuleIds, signals);
