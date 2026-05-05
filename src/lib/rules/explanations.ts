@@ -32,5 +32,14 @@ export function buildSummary(triggered: string[], s: SignalSet): string {
   if (s.proteinPerServing >= 10 && s.sugarPerServing < 8) {
     return 'Solid protein, controlled sugar.';
   }
-  return 'Mixed profile — review the details below.';
+  if (s.category === 'whole_food') {
+    return 'Whole, single-ingredient food.';
+  }
+  if (s.novaGroup != null && s.novaGroup <= 2 && s.additiveCount === 0) {
+    return 'Minimally processed, no additives.';
+  }
+  if (s.novaGroup === 3) {
+    return 'Processed but no major red flags.';
+  }
+  return 'Some pros, some cons — see the details below.';
 }

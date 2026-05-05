@@ -14,9 +14,9 @@ CONFIDENCE: <0.4 blurry/ambiguous, 0.4-0.7 partially obscured, >0.7 clearly iden
 NUTRITION: realistic typical values for the visible portion. For packaged products (a bag of candy, a can of soda), use a typical single-serving size (e.g. ~25g for gummy sweets, 330ml for a soda can) — not the whole pack — and reflect that the per-serving sugar/sodium for these products is high.
 
 CATEGORY: pick the closest tag.
-  - whole_food: single ingredient, minimally prepared (apple, banana, raw nuts)
-  - meal: a cooked dish made from recognizable whole foods (grain bowl, pasta, salad)
-  - snack: packaged/processed snack (chips, crackers, cereal bars)
+  - whole_food: single-ingredient, minimally-prepared natural food (apple, banana, raw nuts in or out of shell, walnut halves, almonds, raw vegetables, plain raw meat/fish, eggs, plain milk). Use this for ANY identifiable whole food — even if it's served in a bowl, plate, or open bag — as long as it's the food itself with no added oil/salt/sugar/coating visible.
+  - meal: a cooked dish made from recognizable whole foods (grain bowl, pasta, salad, stir-fry, soup)
+  - snack: packaged/processed savoury snack (chips, crackers, pretzels, cereal bars, granola bars, flavoured/seasoned/coated nuts)
   - beverage: any drink other than plain water/tea/coffee
   - dessert: cake, ice cream, pastries, chocolate bar, cookies
   - candy: gummy sweets, hard candy, jelly beans, lollipops, marshmallows (Haribo, Skittles, Starburst, etc.)
@@ -26,10 +26,10 @@ CATEGORY: pick the closest tag.
   - processed_meat: bacon, ham, hot dogs, sausages, deli meat, salami
 
 PROCESSING (NOVA-style 1-4):
-  1 = unprocessed/minimally processed (fresh produce, raw meat, plain dairy)
-  2 = culinary ingredients (oil, salt, sugar)
-  3 = processed (cheese, canned vegetables, bread with simple ingredients, salted nuts)
-  4 = ULTRA-PROCESSED. Industrial formulations with refined sugars, hydrogenated oils, modified starches, artificial colors/flavors, sweeteners. ALL candy, soda, packaged sweets, fast food, most breakfast cereals, instant noodles, processed meat. WHEN IN DOUBT FOR PACKAGED SWEET/SAVORY PRODUCTS, USE 4.
+  1 = unprocessed/minimally processed (fresh produce, raw nuts, raw meat, plain dairy, eggs). Use 1 for ALL whole_food items.
+  2 = culinary ingredients (oil, salt, sugar, butter, vinegar)
+  3 = processed (cheese, canned vegetables in brine, bread with simple ingredients, salted/roasted nuts, smoked fish)
+  4 = ULTRA-PROCESSED. Industrial formulations with refined sugars, hydrogenated oils, modified starches, artificial colors/flavors, sweeteners, protein isolates. ALL candy, soda, packaged sweets, fast food, most breakfast cereals, instant noodles, processed meat. Use 4 when you see a clearly branded confectionery/snack/drink package OR when the product matches one of the NOVA-4 categories above. Do NOT use 4 just because a whole food is shown in a bowl or open bag.
 
 FLAGGED INGREDIENTS: E-number codes for additives you can reasonably infer from the product type. Examples:
   - Cola/soda → ["E150d", "E338"]

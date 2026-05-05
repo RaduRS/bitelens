@@ -36,12 +36,15 @@ const NOVA_4_CATEGORIES: FoodCategory[] = [
   'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
 ];
 
+// By definition, a whole, single-ingredient food (raw fruit, raw nuts, plain
+// produce, raw meat) is NOVA 1 — anything else contradicts the category. Guards
+// against the AI returning whole_food + processing 3/4 for things like walnuts
+// in a bowl that look "snack-y".
 function deriveNovaGroup(processing: number, category: FoodCategory): NovaGroup | null {
-  if (processing >= 1 && processing <= 4) {
-    const nova = (NOVA_4_CATEGORIES.includes(category) ? 4 : processing) as NovaGroup;
-    return nova;
-  }
-  return NOVA_4_CATEGORIES.includes(category) ? 4 : null;
+  if (NOVA_4_CATEGORIES.includes(category)) return 4;
+  if (category === 'whole_food') return 1;
+  if (processing >= 1 && processing <= 4) return processing as NovaGroup;
+  return null;
 }
 
 function deriveAdditives(flagged: string[]): Additive[] {

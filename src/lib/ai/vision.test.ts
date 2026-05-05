@@ -71,6 +71,20 @@ describe('responseToProduct', () => {
     expect(p.category).toBe('candy');
   });
 
+  it('forces NOVA 1 for whole_food regardless of declared processing (walnut bug)', () => {
+    const p = responseToProduct({
+      ...sample,
+      name: 'Walnuts',
+      components: ['Walnut halves'],
+      category: 'whole_food',
+      processing: 4,
+      flaggedIngredients: [],
+    });
+    expect(p.novaGroup).toBe(1);
+    expect(p.category).toBe('whole_food');
+    expect(p.additives).toEqual([]);
+  });
+
   it('synthesizes Additive entries from AI-flagged E-codes', () => {
     const p = responseToProduct({
       ...sample,
