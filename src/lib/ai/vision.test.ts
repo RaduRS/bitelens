@@ -71,6 +71,44 @@ describe('responseToProduct', () => {
     expect(p.category).toBe('candy');
   });
 
+  it('reclassifies whole_food + honey as dessert (concentrated sweetener)', () => {
+    const p = responseToProduct({
+      ...sample,
+      name: 'Honey',
+      components: ['Honey'],
+      category: 'whole_food',
+      processing: 1,
+      flaggedIngredients: [],
+      nutrition: { kcal: 64, protein: 0, carbs: 17, sugar: 17, fat: 0, satFat: 0, fiber: 0, sodium: 1 },
+    });
+    expect(p.category).toBe('dessert');
+    expect(p.novaGroup).toBe(4);
+  });
+
+  it('strips additives if AI flags them on a whole_food (impossible by definition)', () => {
+    const p = responseToProduct({
+      ...sample,
+      name: 'Walnut halves',
+      components: ['Walnuts'],
+      category: 'whole_food',
+      processing: 1,
+      flaggedIngredients: ['E330', 'E150d'],
+    });
+    expect(p.additives).toEqual([]);
+    expect(p.category).toBe('whole_food');
+  });
+
+  it('clamps absurd nutrition values from AI hallucinations', () => {
+    const p = responseToProduct({
+      ...sample,
+      nutrition: { kcal: -100, protein: 9999, carbs: 3, sugar: NaN, fat: 22, satFat: 4, fiber: 9, sodium: -50 },
+    });
+    expect(p.nutrition.kcal).toBe(0);
+    expect(p.nutrition.protein).toBe(500);
+    expect(p.nutrition.sugar).toBe(0);
+    expect(p.nutrition.sodium).toBe(0);
+  });
+
   it('forces NOVA 1 for whole_food regardless of declared processing (walnut bug)', () => {
     const p = responseToProduct({
       ...sample,

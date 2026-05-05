@@ -49,15 +49,8 @@ export function ResultClient({
       id: ulid(),
       barcode: product.id,
       scannedAt: Date.now(),
-      verdict: result.verdict,
-      score: result.score,
       favorite: false,
-      snapshot: {
-        brand: product.brand, name: product.name, subtitle: product.subtitle,
-        swatch: product.swatch, glyph: product.glyph, type: product.type,
-        imageUrl: product.imageUrl,
-        nutriScore: product.nutriScore, ecoScore: product.ecoScore, novaGroup: product.novaGroup,
-      },
+      product,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, product.id]);

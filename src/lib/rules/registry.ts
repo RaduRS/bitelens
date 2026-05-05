@@ -127,10 +127,13 @@ export const RULES: Rule[] = [
   },
 
   // ── Sodium (graduated) ────────────────────────────────────────
+  // Naturally-occurring sodium in unprocessed whole foods (raw shellfish, plain
+  // celery, eggs) is not the harm target — sodium guidelines target ADDED salt
+  // in processed food. Same exemption pattern as sugar.
   {
     id: 'sodium_severe',
     severity: 'severe',
-    when: s => s.sodiumPerServing >= 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 1500,
     build: s => ({
       reason: { kind: 'neg', text: `Excessive sodium — ${s.sodiumPerServing}mg per serving` },
       flag:   { tone: 'avoid', label: 'Excessive sodium', detail: `${s.sodiumPerServing}mg` },
@@ -139,7 +142,7 @@ export const RULES: Rule[] = [
   {
     id: 'sodium_high',
     severity: 'high',
-    when: s => s.sodiumPerServing >= 800 && s.sodiumPerServing < 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 800 && s.sodiumPerServing < 1500,
     build: s => ({
       reason: { kind: 'neg', text: `High sodium — ${s.sodiumPerServing}mg per serving` },
       flag:   { tone: 'avoid', label: 'High sodium', detail: `${s.sodiumPerServing}mg` },
@@ -148,7 +151,7 @@ export const RULES: Rule[] = [
   {
     id: 'sodium_moderate',
     severity: 'moderate',
-    when: s => s.sodiumPerServing >= 500 && s.sodiumPerServing < 800,
+    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 500 && s.sodiumPerServing < 800,
     build: s => ({
       reason: { kind: 'neg', text: `Moderate sodium — ${s.sodiumPerServing}mg per serving` },
       flag:   { tone: 'caution', label: 'Sodium', detail: `${s.sodiumPerServing}mg` },
@@ -156,10 +159,13 @@ export const RULES: Rule[] = [
   },
 
   // ── Saturated fat (graduated) ─────────────────────────────────
+  // Whole-food saturated fat (avocado, coconut, plain meat, whole eggs, full-fat
+  // dairy) sits inside a complex nutrient matrix and is not equivalent to
+  // industrial sat-fat from hydrogenated oils. Exempt the same way as sugar/sodium.
   {
     id: 'satfat_high',
     severity: 'high',
-    when: s => s.satFatPerServing >= 8,
+    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 8,
     build: s => ({
       reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPerServing}g` },
@@ -168,7 +174,7 @@ export const RULES: Rule[] = [
   {
     id: 'satfat_moderate',
     severity: 'moderate',
-    when: s => s.satFatPerServing >= 5 && s.satFatPerServing < 8,
+    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 5 && s.satFatPerServing < 8,
     build: s => ({
       reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPerServing}g per serving` },
     }),
@@ -406,20 +412,33 @@ const SEED_OIL_PATTERNS = [
 
 // Refined-sugar ingredients are the strongest signal of an industrial sweet
 // formulation — they are the canonical NOVA-4 markers for confectionery.
+// Includes WHO "free sugars" — anything in this list, when used as an ingredient
+// inside a packaged product, is treated as added sugar (this is different from
+// the whole-food honey-jar case, which is handled in vision-shape coercion).
 const REFINED_SUGAR_PATTERNS = [
   'glucose syrup', 'glucose-fructose syrup', 'fructose syrup',
   'high-fructose corn syrup', 'high fructose corn syrup', 'hfcs',
   'corn syrup', 'invert sugar', 'invert syrup',
   'dextrose', 'maltodextrin', 'caramelised sugar syrup', 'caramelized sugar syrup',
-  'agave syrup', 'rice syrup',
+  'agave syrup', 'agave nectar', 'rice syrup', 'date syrup',
+  'sugar syrup', 'golden syrup', 'treacle', 'molasses',
+  'fruit juice concentrate', 'concentrated fruit juice', 'concentrated apple juice',
 ];
 
 // Industrial markers: substances "of no or rare culinary use" per NOVA criteria.
+// Includes the "clean label" alternatives that replace E-numbers with spelled-out
+// gums and gels — they're still NOVA-4 markers regardless of the listing format.
 const UPF_INGREDIENT_PATTERNS = [
-  'modified starch', 'modified corn starch', 'hydrogenated', 'partially hydrogenated',
+  'modified starch', 'modified corn starch', 'modified tapioca starch',
+  'hydrogenated', 'partially hydrogenated',
   'mono- and diglycerides', 'mono and diglycerides',
-  'protein isolate', 'soy protein isolate', 'whey protein isolate',
-  'artificial flavor', 'artificial colour', 'artificial color',
+  'protein isolate', 'soy protein isolate', 'whey protein isolate', 'pea protein isolate',
+  'artificial flavor', 'artificial flavour', 'artificial colour', 'artificial color',
+  'natural flavor', 'natural flavour', 'natural flavoring', 'natural flavouring',
+  'carrageenan', 'xanthan gum', 'guar gum', 'gellan gum', 'locust bean gum',
+  'microcrystalline cellulose', 'cellulose gum',
+  'hydrolyzed protein', 'hydrolysed protein', 'autolyzed yeast extract',
+  'high-oleic sunflower oil', 'high oleic sunflower oil',
 ];
 
 function containsAny(ingredientsLower: string[], patterns: string[]): boolean {

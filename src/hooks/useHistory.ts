@@ -2,19 +2,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   listScans, setFavorite as setFavStore, clearHistory as clearStore,
-  type ScanEntry,
+  type ScoredScanEntry,
 } from '@/lib/history/storage';
+import { useProfile } from './useProfile';
 
 export function useHistory() {
-  const [scans, setScans] = useState<ScanEntry[]>([]);
+  const { profile, hydrated: profileHydrated } = useProfile();
+  const [scans, setScans] = useState<ScoredScanEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   const refresh = useCallback(async () => {
-    setScans(await listScans());
+    setScans(await listScans(profile));
     setHydrated(true);
-  }, []);
+  }, [profile]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (profileHydrated) void refresh(); }, [profileHydrated, refresh]);
 
   const toggleFavorite = useCallback(async (id: string) => {
     const cur = scans.find(s => s.id === id);

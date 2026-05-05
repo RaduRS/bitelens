@@ -25,15 +25,21 @@ const UPF_CATEGORIES: FoodCategory[] = [
 // "good" verdict band — these foods cannot earn a green badge from a photo alone.
 export function maxScoreCap(s: SignalSet, p: Product): number {
   if (p.type === 'photo') {
-    if (s.category && UPF_CATEGORIES.includes(s.category)) return 45;
-    if (s.novaGroup === 4) return 50;
-    if (s.category === 'beverage' || s.category === 'snack') return 65;
-    if (s.novaGroup === 3) return 70;
+    let cap: number;
+    if (s.category && UPF_CATEGORIES.includes(s.category)) cap = 45;
+    else if (s.novaGroup === 4) cap = 50;
+    else if (s.category === 'beverage' || s.category === 'snack') cap = 65;
+    else if (s.novaGroup === 3) cap = 70;
     // Whole foods (fresh fruit, vegetables, raw nuts, plain meat) are the safest
     // possible AI classification — there's no hidden industrial formulation to
     // worry about, so they get a near-database ceiling.
-    if (s.category === 'whole_food') return 90;
-    return 75;
+    else if (s.category === 'whole_food') cap = 90;
+    else cap = 75;
+    // Low-confidence photos can't be trusted to climb into the "good" band even
+    // if everything else looks clean — the AI itself flagged this as uncertain.
+    // Threshold matches the prompt's "<0.4 = blurry/ambiguous" guidance.
+    if ((p.confidence ?? 1) < 0.4) cap = Math.min(cap, 60);
+    return cap;
   }
   const missingNutri = s.nutriScore == null;
   const missingNova = s.novaGroup == null;

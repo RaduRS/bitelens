@@ -215,14 +215,10 @@ function Picker({
             >
               <RecentRow
                 product={{
-                  id: s.barcode, type: s.snapshot.type,
-                  brand: s.snapshot.brand, name: s.snapshot.name, subtitle: s.snapshot.subtitle,
-                  swatch: s.snapshot.swatch, glyph: s.snapshot.glyph,
-                  imageUrl: s.snapshot.imageUrl,
-                  nutriScore: s.snapshot.nutriScore, ecoScore: s.snapshot.ecoScore, novaGroup: s.snapshot.novaGroup,
-                  allergens: [], additives: [],
-                  nutrition: { serving: '', kcal: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, satFat: 0, fiber: 0, sodium: 0 },
-                  favorite: s.favorite, verdict: s.verdict, score: s.score,
+                  ...s.product,
+                  favorite: s.favorite,
+                  verdict: s.verdict,
+                  score: s.score,
                 }}
                 onClick={() => onPick(s.barcode)}
               />

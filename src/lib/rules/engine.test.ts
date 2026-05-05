@@ -100,6 +100,52 @@ describe('evaluate', () => {
     expect(r.score).toBeLessThan(70);
   });
 
+  it('whole_food photo with naturally high sodium is not penalised (smoked salmon)', () => {
+    const wholeFood: Product = {
+      id: 'photo_salmon', type: 'photo', brand: '', name: 'Smoked salmon',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Smoked salmon'],
+      allergens: ['fish'], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 180, protein: 22, carbs: 0, sugar: 0, fat: 10, satFat: 2, fiber: 0, sodium: 850 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.9,
+    };
+    const r = evaluate(wholeFood, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).not.toContain('sodium_high');
+    expect(r.triggeredRuleIds).not.toContain('sodium_moderate');
+    expect(r.verdict).toBe('good');
+  });
+
+  it('whole_food photo with naturally high sat fat is not penalised (coconut, fatty meat)', () => {
+    const wholeFood: Product = {
+      id: 'photo_coconut', type: 'photo', brand: '', name: 'Fresh coconut',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Coconut flesh'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 350, protein: 3, carbs: 15, sugar: 6, fat: 33, satFat: 30, fiber: 9, sodium: 20 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.9,
+    };
+    const r = evaluate(wholeFood, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).not.toContain('satfat_high');
+    expect(r.triggeredRuleIds).not.toContain('satfat_moderate');
+    expect(r.verdict).toBe('good');
+  });
+
+  it('low-confidence photo cannot reach the Good band even with no negatives', () => {
+    const lowConfPhoto: Product = {
+      id: 'photo_blurry', type: 'photo', brand: '', name: 'Unclear food',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Salad'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 200, protein: 5, carbs: 30, sugar: 4, fat: 5, satFat: 1, fiber: 6, sodium: 200 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.25,
+    };
+    const r = evaluate(lowConfPhoto, DEFAULT_PROFILE);
+    expect(r.score).toBeLessThanOrEqual(60);
+  });
+
   it('apple+banana whole_food photo lands in the Good band, not Caution', () => {
     const fruitPhoto: Product = {
       id: 'photo_fruit', type: 'photo', brand: '', name: 'Apple and banana',
