@@ -31,9 +31,10 @@ export function maxScoreCap(s: SignalSet, p: Product): number {
     else if (s.category === 'beverage' || s.category === 'snack') cap = 65;
     else if (s.novaGroup === 3) cap = 70;
     // Whole foods (fresh fruit, vegetables, raw nuts, plain meat) are the safest
-    // possible AI classification — there's no hidden industrial formulation to
-    // worry about, so they get a near-database ceiling.
-    else if (s.category === 'whole_food') cap = 90;
+    // possible AI classification: NOVA 1 by force, additives stripped by force,
+    // honey/syrup already rerouted to dessert, low-confidence already capped at
+    // 60 below. Nothing left to hedge against — score them on their merits.
+    else if (s.category === 'whole_food') cap = 100;
     else cap = 75;
     // Low-confidence photos can't be trusted to climb into the "good" band even
     // if everything else looks clean — the AI itself flagged this as uncertain.

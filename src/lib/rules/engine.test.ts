@@ -158,11 +158,26 @@ describe('evaluate', () => {
     };
     const r = evaluate(fruitPhoto, DEFAULT_PROFILE);
     expect(r.verdict).toBe('good');
-    expect(r.score).toBeGreaterThanOrEqual(85);
+    expect(r.score).toBe(100);
     expect(r.triggeredRuleIds).not.toContain('sugar_severe');
     expect(r.triggeredRuleIds).not.toContain('sugar_high');
     expect(r.triggeredRuleIds).toContain('pos_whole_food');
     expect(r.triggeredRuleIds).toContain('pos_high_fiber');
+  });
+
+  it('a clean whole-food photo with zero negatives scores a perfect 100', () => {
+    const broccoli: Product = {
+      id: 'photo_broccoli', type: 'photo', brand: '', name: 'Raw broccoli',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Broccoli florets'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 30, protein: 2.5, carbs: 6, sugar: 1.5, fat: 0, satFat: 0, fiber: 2.4, sodium: 30 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.9,
+    };
+    const r = evaluate(broccoli, DEFAULT_PROFILE);
+    expect(r.score).toBe(100);
+    expect(r.verdict).toBe('good');
   });
 
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
