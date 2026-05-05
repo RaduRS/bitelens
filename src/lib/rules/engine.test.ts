@@ -80,4 +80,42 @@ describe('evaluate', () => {
     const r = evaluate(product, DEFAULT_PROFILE);
     expect(r.score).toBeLessThanOrEqual(90);
   });
+
+  it('Haribo-style candy photo is Avoid (sub-40), not Good', () => {
+    const r = evaluate(PRODUCT_INDEX.p_haribo_photo, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('avoid');
+    expect(r.score).toBeLessThan(40);
+    expect(r.triggeredRuleIds).toContain('category_candy');
+    expect(r.triggeredRuleIds).toContain('ultra_processed');
+    // Density catches the "small serving + intensely sweet" trap.
+    expect(r.triggeredRuleIds).toContain('sugar_density_severe');
+    // Refined-sugar markers in the AI-detected components.
+    expect(r.triggeredRuleIds).toContain('refined_sugar_ingredient');
+    // Empty/light additive list must NOT earn the "no additives detected" pat.
+    expect(r.triggeredRuleIds).not.toContain('pos_no_additives');
+  });
+
+  it('photos labelled candy/dessert can never reach the Good band', () => {
+    const r = evaluate(PRODUCT_INDEX.p_haribo_photo, DEFAULT_PROFILE);
+    expect(r.score).toBeLessThan(70);
+  });
+
+  it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
+    const baconPhoto: Product = {
+      id: 'photo_bacon', type: 'photo', brand: '', name: 'Bacon strips',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Bacon strips'],
+      allergens: [],
+      additives: [
+        { code: 'E250', name: 'Sodium nitrite', risk: 'high', detail: 'In cured meat, forms nitrosamines. Processed meat is IARC Group 1.' },
+      ],
+      nutrition: { serving: 'Estimated', kcal: 250, protein: 18, carbs: 1, sugar: 0, fat: 20, satFat: 7, fiber: 0, sodium: 900 },
+      nutriScore: null, ecoScore: null, novaGroup: 4, category: 'processed_meat',
+      confidence: 0.9,
+    };
+    const r = evaluate(baconPhoto, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('avoid');
+    expect(r.triggeredRuleIds).toContain('category_processed_meat');
+    expect(r.triggeredRuleIds).toContain('additive_high_risk');
+  });
 });

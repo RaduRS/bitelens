@@ -10,6 +10,9 @@ describe('responseToProduct', () => {
       kcal: 519.7, protein: 28.04, carbs: 47.6, sugar: 6.13,
       fat: 22.21, satFat: 4.05, fiber: 9.24, sodium: 480.4,
     },
+    category: 'meal' as const,
+    processing: 1 as const,
+    flaggedIngredients: [],
     confidence: 0.86,
   };
 
@@ -25,7 +28,8 @@ describe('responseToProduct', () => {
     expect(p.additives).toEqual([]);
     expect(p.nutriScore).toBeNull();
     expect(p.ecoScore).toBeNull();
-    expect(p.novaGroup).toBeNull();
+    expect(p.novaGroup).toBe(1);
+    expect(p.category).toBe('meal');
     expect(p.confidence).toBe(0.86);
   });
 
@@ -52,5 +56,29 @@ describe('responseToProduct', () => {
     const a = responseToProduct(sample);
     const b = responseToProduct(sample);
     expect(a.id).not.toBe(b.id);
+  });
+
+  it('derives NOVA 4 from a candy category regardless of declared processing', () => {
+    const p = responseToProduct({
+      ...sample,
+      name: 'Haribo Starmix',
+      components: ['Gummy candies', 'Glucose syrup', 'Sugar'],
+      category: 'candy',
+      processing: 2,
+      flaggedIngredients: ['E330'],
+    });
+    expect(p.novaGroup).toBe(4);
+    expect(p.category).toBe('candy');
+  });
+
+  it('synthesizes Additive entries from AI-flagged E-codes', () => {
+    const p = responseToProduct({
+      ...sample,
+      category: 'beverage',
+      processing: 4,
+      flaggedIngredients: ['E150d', 'E338', 'unknown_code', 'E150D'],
+    });
+    expect(p.additives.map(a => a.code)).toEqual(['E150D', 'E338']);
+    expect(p.additives[0].risk).toBe('high');
   });
 });

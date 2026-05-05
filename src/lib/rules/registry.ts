@@ -1,4 +1,4 @@
-import type { Product } from '@/types/product';
+import type { Product, FoodCategory } from '@/types/product';
 import type { Profile } from '@/types/profile';
 import type { Severity, Reason, Flag } from '@/types/verdict';
 import type { SignalSet } from './signals';
@@ -15,41 +15,110 @@ export interface Rule {
   build: (s: SignalSet, p: Product) => RuleHit;
 }
 
+const UPF_CATEGORIES: FoodCategory[] = [
+  'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
+];
+
 export const RULES: Rule[] = [
-  // ── Sugar (graduated) ─────────────────────────────────────────
+  // ── Category-driven UPF penalties (strongest signal we have for photos) ──
+  {
+    id: 'category_candy',
+    severity: 'severe',
+    when: s => s.category === 'candy',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Confectionery — empty calories from refined sugar' },
+      flag:   { tone: 'avoid', label: 'Candy', detail: 'NOVA 4' },
+    }),
+  },
+  {
+    id: 'category_dessert',
+    severity: 'high',
+    when: s => s.category === 'dessert' || s.category === 'baked_good',
+    build: s => ({
+      reason: { kind: 'neg', text: s.category === 'baked_good'
+        ? 'Sweetened baked good — typically high sugar and refined flour'
+        : 'Dessert — typically high sugar and saturated fat' },
+      flag:   { tone: 'avoid', label: 'Dessert', detail: 'NOVA 4' },
+    }),
+  },
+  {
+    id: 'category_fast_food',
+    severity: 'high',
+    when: s => s.category === 'fast_food' || s.category === 'fried_food',
+    build: s => ({
+      reason: { kind: 'neg', text: s.category === 'fried_food'
+        ? 'Deep-fried — high in inflammatory oils and oxidized fats'
+        : 'Fast food — typically high sodium, fat, and refined carbs' },
+      flag:   { tone: 'avoid', label: 'Fast food' },
+    }),
+  },
+  {
+    id: 'category_processed_meat',
+    severity: 'severe',
+    when: s => s.category === 'processed_meat',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Processed meat — IARC Group 1 carcinogen for colorectal cancer' },
+      flag:   { tone: 'avoid', label: 'Processed meat', detail: 'IARC 1' },
+    }),
+  },
+
+  // ── Sugar (graduated, per serving) ────────────────────────────
   {
     id: 'sugar_severe',
     severity: 'severe',
-    when: s => s.sugarPerServing >= 30,
+    when: s => s.sugarPerServing >= 22.5,
     build: s => ({
-      reason: { kind: 'neg', text: `Excessive added sugar — ${s.sugarPerServing}g per serving` },
+      reason: { kind: 'neg', text: `Excessive sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'Excessive sugar', detail: `${s.sugarPerServing}g` },
     }),
   },
   {
     id: 'sugar_high',
     severity: 'high',
-    when: s => s.sugarPerServing >= 15 && s.sugarPerServing < 30,
+    when: s => s.sugarPerServing >= 12 && s.sugarPerServing < 22.5,
     build: s => ({
-      reason: { kind: 'neg', text: `High added sugar — ${s.sugarPerServing}g per serving` },
+      reason: { kind: 'neg', text: `High sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'High sugar', detail: `${s.sugarPerServing}g` },
     }),
   },
   {
     id: 'sugar_moderate',
     severity: 'moderate',
-    when: s => s.sugarPerServing >= 10 && s.sugarPerServing < 15,
+    when: s => s.sugarPerServing >= 7 && s.sugarPerServing < 12,
     build: s => ({
-      reason: { kind: 'neg', text: `Moderate added sugar — ${s.sugarPerServing}g per serving` },
+      reason: { kind: 'neg', text: `Moderate sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'caution', label: 'Added sugar', detail: `${s.sugarPerServing}g` },
     }),
   },
   {
     id: 'sugar_mild',
     severity: 'low',
-    when: s => s.sugarPerServing >= 5 && s.sugarPerServing < 10,
+    when: s => s.sugarPerServing >= 4 && s.sugarPerServing < 7,
     build: s => ({
-      reason: { kind: 'neg', text: `Some added sugar — ${s.sugarPerServing}g per serving` },
+      reason: { kind: 'neg', text: `Some sugar — ${s.sugarPerServing}g per serving` },
+    }),
+  },
+
+  // ── Sugar density: how much of the calories come from sugar ───
+  // Catches small portions of intensely sweet food (candy, soda) where the
+  // absolute sugar number under-reports the concern. Gated to NOT stack with
+  // the absolute-sugar tiers above — sugar_high/severe already cover obvious
+  // sugar-heavy products, density is the extra signal for sneaky-small servings.
+  {
+    id: 'sugar_density_severe',
+    severity: 'high',
+    when: s => s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.5 && s.sugarPerServing < 12,
+    build: s => ({
+      reason: { kind: 'neg', text: `${Math.round(s.sugarShareOfKcal * 100)}% of calories from sugar` },
+      flag:   { tone: 'avoid', label: 'Sugar-heavy', detail: `${Math.round(s.sugarShareOfKcal * 100)}%` },
+    }),
+  },
+  {
+    id: 'sugar_density_high',
+    severity: 'moderate',
+    when: s => s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.3 && s.sugarShareOfKcal < 0.5 && s.sugarPerServing < 7,
+    build: s => ({
+      reason: { kind: 'neg', text: `${Math.round(s.sugarShareOfKcal * 100)}% of calories from sugar` },
     }),
   },
 
@@ -98,6 +167,27 @@ export const RULES: Rule[] = [
     when: s => s.satFatPerServing >= 5 && s.satFatPerServing < 8,
     build: s => ({
       reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPerServing}g per serving` },
+    }),
+  },
+
+  // ── Refined sugar / UPF ingredient flags ─────────────────────
+  {
+    id: 'refined_sugar_ingredient',
+    severity: 'high',
+    when: s => containsAny(s.ingredientsLower, REFINED_SUGAR_PATTERNS),
+    build: () => ({
+      reason: { kind: 'neg', text: 'Contains refined-sugar ingredients (syrups, dextrose, HFCS)' },
+      flag:   { tone: 'avoid', label: 'Refined sugar' },
+    }),
+  },
+  {
+    // Don't stack on top of an existing NOVA-4 verdict — that already captures
+    // the same concern. Use this when NOVA is missing or unknown.
+    id: 'upf_ingredient_marker',
+    severity: 'moderate',
+    when: s => s.novaGroup !== 4 && containsAny(s.ingredientsLower, UPF_INGREDIENT_PATTERNS),
+    build: () => ({
+      reason: { kind: 'neg', text: 'Industrial ingredients suggest ultra-processing' },
     }),
   },
 
@@ -231,9 +321,20 @@ export const RULES: Rule[] = [
 
   // ── Positives (no penalty) ────────────────────────────────────
   {
+    // Only credit "no additives" when we have evidence the product is genuinely
+    // minimally processed — otherwise an empty additives array (e.g. on photos
+    // before AI flags any) silently gives candy a positive.
     id: 'pos_no_additives',
     severity: 'pos',
-    when: s => s.additiveCount === 0,
+    when: (s, _profile, p) => {
+      if (s.additiveCount !== 0) return false;
+      if (s.category && UPF_CATEGORIES.includes(s.category)) return false;
+      if (s.novaGroup === 4) return false;
+      if (p.type === 'photo') {
+        return s.category === 'whole_food' || s.category === 'meal' || (s.novaGroup != null && s.novaGroup <= 2);
+      }
+      return s.novaGroup != null && s.novaGroup <= 2;
+    },
     build: () => ({ reason: { kind: 'pos', text: 'No additives detected' } }),
   },
   {
@@ -257,7 +358,7 @@ export const RULES: Rule[] = [
   {
     id: 'pos_low_sugar',
     severity: 'pos',
-    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0,
+    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0 && !(s.category && UPF_CATEGORIES.includes(s.category)),
     build: () => ({ reason: { kind: 'pos', text: 'Low sugar' } }),
   },
 ];
@@ -290,8 +391,28 @@ const SEED_OIL_PATTERNS = [
   'olio di palma', 'olio di palmisti', 'olio di vinaccioli',
 ];
 
+// Refined-sugar ingredients are the strongest signal of an industrial sweet
+// formulation — they are the canonical NOVA-4 markers for confectionery.
+const REFINED_SUGAR_PATTERNS = [
+  'glucose syrup', 'glucose-fructose syrup', 'fructose syrup',
+  'high-fructose corn syrup', 'high fructose corn syrup', 'hfcs',
+  'corn syrup', 'invert sugar', 'invert syrup',
+  'dextrose', 'maltodextrin', 'caramelised sugar syrup', 'caramelized sugar syrup',
+  'agave syrup', 'rice syrup',
+];
+
+// Industrial markers: substances "of no or rare culinary use" per NOVA criteria.
+const UPF_INGREDIENT_PATTERNS = [
+  'modified starch', 'modified corn starch', 'hydrogenated', 'partially hydrogenated',
+  'mono- and diglycerides', 'mono and diglycerides',
+  'protein isolate', 'soy protein isolate', 'whey protein isolate',
+  'artificial flavor', 'artificial colour', 'artificial color',
+];
+
+function containsAny(ingredientsLower: string[], patterns: string[]): boolean {
+  return ingredientsLower.some(ing => patterns.some(pat => ing.includes(pat)));
+}
+
 function containsSeedOils(ingredientsLower: string[]): boolean {
-  return ingredientsLower.some(ing =>
-    SEED_OIL_PATTERNS.some(pat => ing.includes(pat)),
-  );
+  return containsAny(ingredientsLower, SEED_OIL_PATTERNS);
 }

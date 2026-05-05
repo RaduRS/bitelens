@@ -1,19 +1,52 @@
 import 'server-only';
 import type { Product } from '@/types/product';
-import { ALLERGEN_ENUM, responseToProduct, type AnalysisResponse } from './vision-shape';
+import { ALLERGEN_ENUM, CATEGORY_ENUM, responseToProduct, type AnalysisResponse } from './vision-shape';
 
 interface AnalyzePhotoInput {
   base64: string;
   mimeType: string;
 }
 
-const SYSTEM_PROMPT = `You analyze food photos. Identify the meal, list visible components, flag allergens, and estimate per-serving nutrition. Return strictly the JSON shape requested. Be conservative with confidence: <0.4 if blurry/ambiguous, 0.4-0.7 if partially obscured, >0.7 if clearly identifiable. Use realistic typical nutrition values for the identified meal at the visible portion size.`;
+const SYSTEM_PROMPT = `You analyze food photos for a nutrition app. Identify what's in the photo accurately, including packaged products like candy, soda, and snacks (not just home-cooked meals). Return strictly the JSON shape requested.
 
-const USER_PROMPT = `Analyze this meal photo. Return:
-- name: one-line meal name (e.g. "Grain bowl with salmon"), properly capitalized
-- components: visible foods (3-8 items max)
-- allergens: subset of [gluten, dairy, eggs, nuts, peanuts, soy, fish, shellfish, sesame] potentially present
-- nutrition (per estimated serving): kcal, protein (g), carbs (g), sugar (g), fat (g), satFat (g), fiber (g), sodium (mg)
+CONFIDENCE: <0.4 blurry/ambiguous, 0.4-0.7 partially obscured, >0.7 clearly identifiable.
+
+NUTRITION: realistic typical values for the visible portion. For packaged products (a bag of candy, a can of soda), use a typical single-serving size (e.g. ~25g for gummy sweets, 330ml for a soda can) — not the whole pack — and reflect that the per-serving sugar/sodium for these products is high.
+
+CATEGORY: pick the closest tag.
+  - whole_food: single ingredient, minimally prepared (apple, banana, raw nuts)
+  - meal: a cooked dish made from recognizable whole foods (grain bowl, pasta, salad)
+  - snack: packaged/processed snack (chips, crackers, cereal bars)
+  - beverage: any drink other than plain water/tea/coffee
+  - dessert: cake, ice cream, pastries, chocolate bar, cookies
+  - candy: gummy sweets, hard candy, jelly beans, lollipops, marshmallows (Haribo, Skittles, Starburst, etc.)
+  - fast_food: burger, fried chicken, pizza, fries from QSR-style preparation
+  - baked_good: doughnuts, croissants, muffins, sweetened bread
+  - fried_food: deep-fried foods (fries, fried chicken, tempura) — use this if not fast_food
+  - processed_meat: bacon, ham, hot dogs, sausages, deli meat, salami
+
+PROCESSING (NOVA-style 1-4):
+  1 = unprocessed/minimally processed (fresh produce, raw meat, plain dairy)
+  2 = culinary ingredients (oil, salt, sugar)
+  3 = processed (cheese, canned vegetables, bread with simple ingredients, salted nuts)
+  4 = ULTRA-PROCESSED. Industrial formulations with refined sugars, hydrogenated oils, modified starches, artificial colors/flavors, sweeteners. ALL candy, soda, packaged sweets, fast food, most breakfast cereals, instant noodles, processed meat. WHEN IN DOUBT FOR PACKAGED SWEET/SAVORY PRODUCTS, USE 4.
+
+FLAGGED INGREDIENTS: E-number codes for additives you can reasonably infer from the product type. Examples:
+  - Cola/soda → ["E150d", "E338"]
+  - Brightly colored candy → ["E102", "E110", "E129"] if you see yellow/orange/red colors
+  - Cured/processed meats (bacon, ham) → ["E250"]
+  - Diet/sugar-free drinks → ["E951"] for aspartame
+  - Gummy candy → ["E330"] (citric acid) and gelatine doesn't have an E-code here
+Use only codes when you're confident from the visible product. Do NOT guess randomly.`;
+
+const USER_PROMPT = `Analyze this food photo. Return:
+- name: one-line product/meal name, properly capitalized (e.g. "Grain bowl with salmon", "Haribo Starmix gummies", "Coca-Cola can")
+- components: 3-8 visible foods/ingredients
+- allergens: subset of [gluten, dairy, eggs, nuts, peanuts, soy, fish, shellfish, sesame]
+- nutrition (per realistic single serving): kcal, protein g, carbs g, sugar g, fat g, satFat g, fiber g, sodium mg
+- category: one of [meal, whole_food, snack, beverage, dessert, candy, fast_food, baked_good, fried_food, processed_meat]
+- processing: 1-4 NOVA group
+- flaggedIngredients: array of E-number codes (e.g. ["E150d","E338"]) — empty if none confidently inferable
 - confidence: 0.0-1.0`;
 
 const JSON_SCHEMA = {
@@ -22,7 +55,7 @@ const JSON_SCHEMA = {
   schema: {
     type: 'object',
     additionalProperties: false,
-    required: ['name', 'components', 'allergens', 'nutrition', 'confidence'],
+    required: ['name', 'components', 'allergens', 'nutrition', 'category', 'processing', 'flaggedIngredients', 'confidence'],
     properties: {
       name: { type: 'string' },
       components: { type: 'array', items: { type: 'string' } },
@@ -45,6 +78,9 @@ const JSON_SCHEMA = {
           sodium: { type: 'number' },
         },
       },
+      category: { type: 'string', enum: CATEGORY_ENUM },
+      processing: { type: 'integer', enum: [1, 2, 3, 4] },
+      flaggedIngredients: { type: 'array', items: { type: 'string' } },
       confidence: { type: 'number' },
     },
   },

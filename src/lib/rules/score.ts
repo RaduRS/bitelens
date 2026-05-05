@@ -1,4 +1,4 @@
-import type { Product } from '@/types/product';
+import type { Product, FoodCategory } from '@/types/product';
 import type { VerdictLevel, Severity } from '@/types/verdict';
 import type { SignalSet } from './signals';
 
@@ -15,11 +15,22 @@ export function bandToVerdict(score: number): VerdictLevel {
   return 'avoid';
 }
 
-// Caps the maximum trustable score based on how complete the underlying data is.
-// Missing Nutri-Score / NOVA / processing info means we can't credibly award a
-// "perfect" score even when no negative rule fires.
+const UPF_CATEGORIES: FoodCategory[] = [
+  'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
+];
+
+// Caps the maximum trustable score based on data completeness AND known UPF signal.
+// Photos: we can't verify NOVA/Nutri-Score independently, so the cap is tighter.
+// When the AI tells us "this is candy/dessert/fast food" the ceiling drops below the
+// "good" verdict band — these foods cannot earn a green badge from a photo alone.
 export function maxScoreCap(s: SignalSet, p: Product): number {
-  if (p.type === 'photo') return 75;
+  if (p.type === 'photo') {
+    if (s.category && UPF_CATEGORIES.includes(s.category)) return 45;
+    if (s.novaGroup === 4) return 50;
+    if (s.category === 'beverage' || s.category === 'snack') return 65;
+    if (s.novaGroup === 3) return 70;
+    return 75;
+  }
   const missingNutri = s.nutriScore == null;
   const missingNova = s.novaGroup == null;
   if (missingNutri && missingNova) return 80;

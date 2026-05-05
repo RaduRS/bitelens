@@ -87,6 +87,20 @@ export const SAMPLE_PRODUCTS: Product[] = [
     nutrition: { serving: '330ml bottle', kcal: 38, protein: 0, carbs: 9, sugar: 4, fat: 0, satFat: 0, fiber: 0, sodium: 10 },
     nutriScore: 'B', ecoScore: 'A', novaGroup: 3, timeAgo: '3 days ago',
   },
+  {
+    // Photo-flow Haribo Starmix at a typical 25g serving (~8 sweets).
+    // Mirrors what gpt-5-nano now returns when asked for category/processing/flagged.
+    id: 'p_haribo_photo', type: 'photo', brand: '', name: 'Haribo Starmix gummies',
+    subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+    components: ['Gummy candies', 'Glucose syrup', 'Sugar', 'Gelatine'],
+    allergens: [],
+    additives: [
+      { code: 'E330', name: 'Citric acid', risk: 'none', detail: 'Naturally occurring acid widely used as acidulant/preservative. Safe.' },
+    ],
+    nutrition: { serving: 'Estimated serving', kcal: 86, protein: 1.5, carbs: 19, sugar: 11.5, fat: 0, satFat: 0, fiber: 0, sodium: 5 },
+    nutriScore: null, ecoScore: null, novaGroup: 4, category: 'candy',
+    confidence: 0.85,
+  },
 ];
 
 export const PRODUCT_INDEX: Record<string, Product> =

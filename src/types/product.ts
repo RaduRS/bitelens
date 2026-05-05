@@ -26,6 +26,18 @@ export interface Nutrition {
 export type NutriScoreGrade = 'A' | 'B' | 'C' | 'D' | 'E';
 export type NovaGroup = 1 | 2 | 3 | 4;
 
+export type FoodCategory =
+  | 'meal'
+  | 'whole_food'
+  | 'snack'
+  | 'beverage'
+  | 'dessert'
+  | 'candy'
+  | 'fast_food'
+  | 'baked_good'
+  | 'fried_food'
+  | 'processed_meat';
+
 export interface Product {
   id: string;
   type: 'barcode' | 'photo';
@@ -43,6 +55,7 @@ export interface Product {
   nutriScore: NutriScoreGrade | null;
   ecoScore: NutriScoreGrade | null;
   novaGroup: NovaGroup | null;
+  category?: FoodCategory | null;
   alternatives?: string[];
   confidence?: number;
   favorite?: boolean;
