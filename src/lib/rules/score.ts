@@ -29,6 +29,10 @@ export function maxScoreCap(s: SignalSet, p: Product): number {
     if (s.novaGroup === 4) return 50;
     if (s.category === 'beverage' || s.category === 'snack') return 65;
     if (s.novaGroup === 3) return 70;
+    // Whole foods (fresh fruit, vegetables, raw nuts, plain meat) are the safest
+    // possible AI classification — there's no hidden industrial formulation to
+    // worry about, so they get a near-database ceiling.
+    if (s.category === 'whole_food') return 90;
     return 75;
   }
   const missingNutri = s.nutriScore == null;

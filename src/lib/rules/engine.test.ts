@@ -100,6 +100,25 @@ describe('evaluate', () => {
     expect(r.score).toBeLessThan(70);
   });
 
+  it('apple+banana whole_food photo lands in the Good band, not Caution', () => {
+    const fruitPhoto: Product = {
+      id: 'photo_fruit', type: 'photo', brand: '', name: 'Apple and banana',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Apple', 'Banana'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated serving', kcal: 200, protein: 2, carbs: 52, sugar: 33, fat: 0.6, satFat: 0.2, fiber: 7, sodium: 2 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.9,
+    };
+    const r = evaluate(fruitPhoto, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('good');
+    expect(r.score).toBeGreaterThanOrEqual(85);
+    expect(r.triggeredRuleIds).not.toContain('sugar_severe');
+    expect(r.triggeredRuleIds).not.toContain('sugar_high');
+    expect(r.triggeredRuleIds).toContain('pos_whole_food');
+    expect(r.triggeredRuleIds).toContain('pos_high_fiber');
+  });
+
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
     const baconPhoto: Product = {
       id: 'photo_bacon', type: 'photo', brand: '', name: 'Bacon strips',

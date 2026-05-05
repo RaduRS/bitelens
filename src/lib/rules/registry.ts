@@ -63,10 +63,14 @@ export const RULES: Rule[] = [
   },
 
   // ── Sugar (graduated, per serving) ────────────────────────────
+  // Sugar penalties target FREE sugars (added/refined). WHO and AHA exclude
+  // intrinsic sugars in whole fruit/vegetables — they come bound to fiber and
+  // a food matrix that blunts glycemic response. So the absolute-sugar tiers
+  // skip whole_food: an apple with 19g sugar is not a candy with 19g sugar.
   {
     id: 'sugar_severe',
     severity: 'severe',
-    when: s => s.sugarPerServing >= 22.5,
+    when: s => s.category !== 'whole_food' && s.sugarPerServing >= 22.5,
     build: s => ({
       reason: { kind: 'neg', text: `Excessive sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'Excessive sugar', detail: `${s.sugarPerServing}g` },
@@ -75,7 +79,7 @@ export const RULES: Rule[] = [
   {
     id: 'sugar_high',
     severity: 'high',
-    when: s => s.sugarPerServing >= 12 && s.sugarPerServing < 22.5,
+    when: s => s.category !== 'whole_food' && s.sugarPerServing >= 12 && s.sugarPerServing < 22.5,
     build: s => ({
       reason: { kind: 'neg', text: `High sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'avoid', label: 'High sugar', detail: `${s.sugarPerServing}g` },
@@ -84,7 +88,7 @@ export const RULES: Rule[] = [
   {
     id: 'sugar_moderate',
     severity: 'moderate',
-    when: s => s.sugarPerServing >= 7 && s.sugarPerServing < 12,
+    when: s => s.category !== 'whole_food' && s.sugarPerServing >= 7 && s.sugarPerServing < 12,
     build: s => ({
       reason: { kind: 'neg', text: `Moderate sugar — ${s.sugarPerServing}g per serving` },
       flag:   { tone: 'caution', label: 'Added sugar', detail: `${s.sugarPerServing}g` },
@@ -93,7 +97,7 @@ export const RULES: Rule[] = [
   {
     id: 'sugar_mild',
     severity: 'low',
-    when: s => s.sugarPerServing >= 4 && s.sugarPerServing < 7,
+    when: s => s.category !== 'whole_food' && s.sugarPerServing >= 4 && s.sugarPerServing < 7,
     build: s => ({
       reason: { kind: 'neg', text: `Some sugar — ${s.sugarPerServing}g per serving` },
     }),
@@ -107,7 +111,7 @@ export const RULES: Rule[] = [
   {
     id: 'sugar_density_severe',
     severity: 'high',
-    when: s => s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.5 && s.sugarPerServing < 12,
+    when: s => s.category !== 'whole_food' && s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.5 && s.sugarPerServing < 12,
     build: s => ({
       reason: { kind: 'neg', text: `${Math.round(s.sugarShareOfKcal * 100)}% of calories from sugar` },
       flag:   { tone: 'avoid', label: 'Sugar-heavy', detail: `${Math.round(s.sugarShareOfKcal * 100)}%` },
@@ -116,7 +120,7 @@ export const RULES: Rule[] = [
   {
     id: 'sugar_density_high',
     severity: 'moderate',
-    when: s => s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.3 && s.sugarShareOfKcal < 0.5 && s.sugarPerServing < 7,
+    when: s => s.category !== 'whole_food' && s.kcalPerServing >= 30 && s.sugarShareOfKcal >= 0.3 && s.sugarShareOfKcal < 0.5 && s.sugarPerServing < 7,
     build: s => ({
       reason: { kind: 'neg', text: `${Math.round(s.sugarShareOfKcal * 100)}% of calories from sugar` },
     }),
@@ -336,6 +340,15 @@ export const RULES: Rule[] = [
       return s.novaGroup != null && s.novaGroup <= 2;
     },
     build: () => ({ reason: { kind: 'pos', text: 'No additives detected' } }),
+  },
+  {
+    id: 'pos_whole_food',
+    severity: 'pos',
+    when: s => s.category === 'whole_food',
+    build: () => ({
+      reason: { kind: 'pos', text: 'Whole, unprocessed food' },
+      flag:   { tone: 'good', label: 'Whole food' },
+    }),
   },
   {
     id: 'pos_high_protein',
