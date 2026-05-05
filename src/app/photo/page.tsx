@@ -173,7 +173,7 @@ function ErrorView({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
       {previewUrl && (
-        <div className="overflow-hidden" style={{ width: 200, height: 200, borderRadius: 18, opacity: 0.5 }}>
+        <div className="relative overflow-hidden" style={{ width: 200, height: 200, borderRadius: 18, opacity: 0.5 }}>
           <PreviewImage url={previewUrl} />
         </div>
       )}

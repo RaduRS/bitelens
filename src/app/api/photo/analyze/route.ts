@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { analyzePhoto } from '@/lib/ai/vision';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
