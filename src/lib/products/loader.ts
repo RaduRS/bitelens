@@ -54,6 +54,7 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
       nutriScore: fresh.nutriScore,
       ecoScore: fresh.ecoScore,
       novaGroup: fresh.novaGroup,
+      category: fresh.category ?? null,
       signals,
     })
     .onConflictDoNothing();
@@ -81,5 +82,6 @@ function rowToProduct(row: typeof schema.products.$inferSelect): Product {
     nutriScore: row.nutriScore as Product['nutriScore'],
     ecoScore: row.ecoScore as Product['ecoScore'],
     novaGroup: row.novaGroup as Product['novaGroup'],
+    category: (row.category ?? null) as Product['category'],
   };
 }

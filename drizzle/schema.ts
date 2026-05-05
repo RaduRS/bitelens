@@ -13,6 +13,7 @@ export const products = pgTable('products', {
   nutriScore: text('nutri_score'),
   ecoScore: text('eco_score'),
   novaGroup: integer('nova_group'),
+  category: text('category'),
   source: text('source').notNull().default('off'),
   sourceFetchedAt: timestamp('source_fetched_at', { withTimezone: true }).notNull().defaultNow(),
   signals: jsonb('signals').$type<unknown>(),

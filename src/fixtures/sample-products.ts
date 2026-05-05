@@ -45,7 +45,7 @@ export const SAMPLE_PRODUCTS: Product[] = [
     components: ['Salmon (≈110g)', 'Quinoa', 'Mixed greens', 'Avocado', 'Cherry tomatoes', 'Lemon-tahini dressing'],
     allergens: ['fish', 'sesame'], additives: [],
     nutrition: { serving: 'Estimated bowl', kcal: 520, protein: 28, carbs: 48, sugar: 6, fat: 22, satFat: 4, fiber: 9, sodium: 480 },
-    nutriScore: 'A', ecoScore: 'A', novaGroup: 1, confidence: 0.86, timeAgo: '3 hrs ago',
+    nutriScore: 'A', ecoScore: 'A', novaGroup: 1, category: 'meal', confidence: 0.86, timeAgo: '3 hrs ago',
   },
   {
     id: 'p_protein_bar', type: 'barcode',

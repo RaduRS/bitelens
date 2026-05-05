@@ -165,6 +165,19 @@ describe('evaluate', () => {
     expect(r.triggeredRuleIds).toContain('pos_high_fiber');
   });
 
+  it('low-sugar goal does not breach on whole fruit (banana)', () => {
+    const banana: Product = {
+      id: 'p_banana_test', type: 'barcode', brand: 'X', name: 'Banana',
+      subtitle: '', swatch: '#fff', glyph: 'B',
+      ingredients: ['Banana'], allergens: [], additives: [],
+      nutrition: { serving: '100g', kcal: 89, protein: 1, carbs: 23, sugar: 12, fat: 0, satFat: 0, fiber: 2.6, sodium: 1 },
+      nutriScore: 'A', ecoScore: 'A', novaGroup: 1, category: 'whole_food',
+    };
+    const r = evaluate(banana, { ...DEFAULT_PROFILE, goals: ['low_sugar'] });
+    expect(r.triggeredRuleIds).not.toContain('goal_low_sugar_breach');
+    expect(r.verdict).toBe('good');
+  });
+
   it('a clean whole-food photo with zero negatives scores a perfect 100', () => {
     const broccoli: Product = {
       id: 'photo_broccoli', type: 'photo', brand: '', name: 'Raw broccoli',

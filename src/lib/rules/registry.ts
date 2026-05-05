@@ -267,9 +267,16 @@ export const RULES: Rule[] = [
 
   // ── Personal goals ────────────────────────────────────────────
   {
+    // Same whole-food exemption as the main sugar tiers — a banana shouldn't
+    // breach a "low sugar" goal because intrinsic fruit sugar isn't WHO "free
+    // sugar". Without this, scanning fruit on a low-sugar profile falsely
+    // contradicts the dietary guidance the goal is based on.
     id: 'goal_low_sugar_breach',
     severity: 'low',
-    when: (s, profile) => profile.goals.includes('low_sugar') && s.sugarPerServing >= 8,
+    when: (s, profile) =>
+      profile.goals.includes('low_sugar') &&
+      s.category !== 'whole_food' &&
+      s.sugarPerServing >= 8,
     build: s => ({
       reason: { kind: 'neg', text: `Above your low-sugar goal (${s.sugarPerServing}g)` },
     }),
