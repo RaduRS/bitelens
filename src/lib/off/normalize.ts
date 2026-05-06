@@ -219,5 +219,7 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     category,
     isOrganic: isOrganic || undefined,
     pesticideAdvisory,
+    labelsTags,
+    originsTags,
   };
 }

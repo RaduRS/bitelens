@@ -3,6 +3,7 @@ import { getDb, schema } from '@/lib/db/client';
 import { fetchProductFromOFF } from '@/lib/off/client';
 import { extractSignals } from '@/lib/rules/signals';
 import { lookupAdditive } from '@/lib/additives/registry';
+import { isOrganicLabelled, lookupPesticideAdvisory } from '@/lib/pesticides/registry';
 import type { Product, Additive } from '@/types/product';
 
 export const BARCODE_RE = /^\d{6,14}$/;
@@ -56,6 +57,8 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
       novaGroup: fresh.novaGroup,
       category: fresh.category ?? null,
       signals,
+      labels: fresh.labelsTags ?? [],
+      origins: fresh.originsTags ?? [],
     })
     .onConflictDoNothing();
 
@@ -66,6 +69,17 @@ function rowToProduct(row: typeof schema.products.$inferSelect): Product {
   // Re-enrich additives from the live registry so cache rows pick up new metadata.
   const cachedAdditives = (row.additives as Additive[]) ?? [];
   const additives = cachedAdditives.map(a => lookupAdditive(a.code) ?? a);
+  // Re-derive isOrganic + pesticide advisory at read time so registry updates
+  // flow to existing rows. Rows cached before the labels/origins columns were
+  // added will have nulls — fall back to empty arrays so the lookup is silent
+  // (no false positives from missing data).
+  const labelsTags = (row.labels ?? []) as string[];
+  const originsTags = (row.origins ?? []) as string[];
+  const category = (row.category ?? null) as Product['category'];
+  const isOrganic = isOrganicLabelled(labelsTags);
+  const pesticideAdvisory = isOrganic
+    ? null
+    : lookupPesticideAdvisory(row.name, category, originsTags);
   return {
     id: row.barcode,
     type: 'barcode',
@@ -82,6 +96,10 @@ function rowToProduct(row: typeof schema.products.$inferSelect): Product {
     nutriScore: row.nutriScore as Product['nutriScore'],
     ecoScore: row.ecoScore as Product['ecoScore'],
     novaGroup: row.novaGroup as Product['novaGroup'],
-    category: (row.category ?? null) as Product['category'],
+    category,
+    isOrganic: isOrganic || undefined,
+    pesticideAdvisory,
+    labelsTags,
+    originsTags,
   };
 }

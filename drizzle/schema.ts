@@ -17,6 +17,12 @@ export const products = pgTable('products', {
   source: text('source').notNull().default('off'),
   sourceFetchedAt: timestamp('source_fetched_at', { withTimezone: true }).notNull().defaultNow(),
   signals: jsonb('signals').$type<unknown>(),
+  // Raw OFF taxonomy tags retained so derived flags (isOrganic, pesticide
+  // advisory) can be re-computed at read time. Same pattern as the additive
+  // re-enrichment in rowToProduct — store the raw tag, run the live registry
+  // on every read so registry updates flow to existing cached rows.
+  labels: jsonb('labels').$type<string[]>(),
+  origins: jsonb('origins').$type<string[]>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

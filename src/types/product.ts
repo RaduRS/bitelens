@@ -66,6 +66,11 @@ export interface Product {
     source: string;
     detail: string;
   } | null;
+  // Raw OFF taxonomy passthroughs — kept so the cache layer can re-derive
+  // isOrganic / pesticideAdvisory on read instead of persisting the derived
+  // values (which would go stale when the registry expands).
+  labelsTags?: string[];
+  originsTags?: string[];
 }
 
 export type { Diet, GoalKey, Profile } from './profile';
