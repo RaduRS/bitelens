@@ -32,7 +32,7 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
   score = Math.max(0, Math.min(cap, score));
   const verdict = bandToVerdict(score);
   const reasons = [...negReasons, ...posReasons].slice(0, MAX_REASONS);
-  const summary = buildSummary(triggeredRuleIds, signals);
+  const summary = buildSummary(triggeredRuleIds, signals, product);
   const benefits = extractBenefits(signals);
 
   return { verdict, score, summary, reasons, flags, triggeredRuleIds, benefits };
