@@ -193,6 +193,49 @@ describe('evaluate', () => {
     expect(r.verdict).toBe('good');
   });
 
+  it('imported chilli pepper photo triggers the residue advisory', () => {
+    const chilli: Product = {
+      id: 'photo_chilli', type: 'photo', brand: '', name: "Bird's eye chillies",
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ["Bird's eye chillies"],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', kcal: 40, protein: 2, carbs: 9, sugar: 5, fat: 0.5, satFat: 0, fiber: 1.5, sodium: 7 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.9,
+      pesticideAdvisory: { commodity: 'Chilli peppers', source: 'UK PRiF 2024', detail: 'flagged' },
+    };
+    const r = evaluate(chilli, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('commodity_elevated_residue');
+  });
+
+  it('strawberries do NOT get a residue advisory (false-positive guard)', () => {
+    const strawberry: Product = {
+      id: 'p_strawberry', type: 'barcode', brand: 'Asda', name: 'Strawberries',
+      subtitle: '400g', swatch: '#fff', glyph: 'S',
+      ingredients: ['Strawberries'], allergens: [], additives: [],
+      nutrition: { serving: '100g', kcal: 32, protein: 0.7, carbs: 7.7, sugar: 4.9, fat: 0.3, satFat: 0, fiber: 2, sodium: 1 },
+      nutriScore: 'A', ecoScore: 'A', novaGroup: 1, category: 'whole_food',
+      pesticideAdvisory: null,
+    };
+    const r = evaluate(strawberry, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).not.toContain('commodity_elevated_residue');
+  });
+
+  it('certified-organic product gets a positive', () => {
+    const organic: Product = {
+      id: 'p_organic', type: 'barcode', brand: 'Riverford', name: 'Organic Cucumber',
+      subtitle: '1 each', swatch: '#fff', glyph: 'C',
+      ingredients: ['Organic cucumber'], allergens: [], additives: [],
+      nutrition: { serving: '100g', kcal: 16, protein: 0.7, carbs: 3.6, sugar: 1.7, fat: 0.1, satFat: 0, fiber: 0.5, sodium: 1 },
+      nutriScore: 'A', ecoScore: 'A', novaGroup: 1, category: 'whole_food',
+      isOrganic: true,
+      pesticideAdvisory: null,
+    };
+    const r = evaluate(organic, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('pos_organic_certified');
+    expect(r.verdict).toBe('good');
+  });
+
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
     const baconPhoto: Product = {
       id: 'photo_bacon', type: 'photo', brand: '', name: 'Bacon strips',

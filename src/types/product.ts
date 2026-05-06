@@ -60,6 +60,12 @@ export interface Product {
   confidence?: number;
   favorite?: boolean;
   timeAgo?: string;
+  isOrganic?: boolean;
+  pesticideAdvisory?: {
+    commodity: string;
+    source: string;
+    detail: string;
+  } | null;
 }
 
 export type { Diet, GoalKey, Profile } from './profile';

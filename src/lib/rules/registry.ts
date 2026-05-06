@@ -336,7 +336,34 @@ export const RULES: Rule[] = [
     }),
   },
 
+  // ── Pesticide residue advisory (whole-food only) ──────────────
+  // Severity is intentionally `low` (-5 pts): the regulator's own conclusion
+  // is "wash thoroughly", not "avoid". The signal exists, but it's a behaviour
+  // hint, not a verdict. See src/lib/pesticides/registry.ts for the rationale
+  // behind the conservative commodity list.
+  {
+    id: 'commodity_elevated_residue',
+    severity: 'low',
+    when: (_s, _profile, p) => p.pesticideAdvisory != null,
+    build: (_s, p) => ({
+      reason: { kind: 'neg', text: p.pesticideAdvisory!.detail },
+      flag:   { tone: 'caution', label: 'Wash thoroughly', detail: p.pesticideAdvisory!.commodity },
+    }),
+  },
+
   // ── Positives (no penalty) ────────────────────────────────────
+  {
+    // Certified organic = no synthetic pesticides per the certifying body's
+    // standards. This is a verified third-party claim (EU/USDA/Soil Assoc.),
+    // not an inference — strong enough to surface as a positive.
+    id: 'pos_organic_certified',
+    severity: 'pos',
+    when: (_s, _profile, p) => p.isOrganic === true,
+    build: () => ({
+      reason: { kind: 'pos', text: 'Certified organic — lower pesticide exposure' },
+      flag:   { tone: 'good', label: 'Organic', detail: 'Certified' },
+    }),
+  },
   {
     // Only credit "no additives" when we have evidence the product is genuinely
     // minimally processed — otherwise an empty additives array (e.g. on photos

@@ -42,15 +42,17 @@ const NEG_PHRASE: Record<string, string> = {
   diet_low_carb_breach:           'high-carb for low-carb',
   diet_carnivore_breach:          'off-carnivore',
   diet_anti_inflammatory_breach:  'seed oils flagged',
+  commodity_elevated_residue:     'regulator-flagged residue category',
 };
 
 const POS_PHRASE: Record<string, string> = {
-  pos_whole_food:    'whole food',
-  pos_nutri_a_b:     'top Nutri-Score',
-  pos_high_protein:  'solid protein',
-  pos_high_fiber:    'good fiber',
-  pos_low_sugar:     'low sugar',
-  pos_no_additives:  'no additives',
+  pos_organic_certified: 'certified organic',
+  pos_whole_food:        'whole food',
+  pos_nutri_a_b:         'top Nutri-Score',
+  pos_high_protein:      'solid protein',
+  pos_high_fiber:        'good fiber',
+  pos_low_sugar:         'low sugar',
+  pos_no_additives:      'no additives',
 };
 
 // "What's the dominant concern" priority. Carcinogen and category-driven UPF
@@ -81,6 +83,7 @@ const NEG_PRIORITY: string[] = [
   'processed_nova3',
   'nutri_score_d',
   'sugar_mild',
+  'commodity_elevated_residue',
   'goal_low_sugar_breach',
   'goal_less_processed_breach',
   'diet_keto_severe_breach',
@@ -91,6 +94,7 @@ const NEG_PRIORITY: string[] = [
 ];
 
 const POS_PRIORITY: string[] = [
+  'pos_organic_certified',
   'pos_whole_food',
   'pos_nutri_a_b',
   'pos_high_protein',

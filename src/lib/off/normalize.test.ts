@@ -94,6 +94,71 @@ describe('normalizeOFF', () => {
     expect(r?.nutrition.sodium).toBe(20_000);
   });
 
+  it('detects organic certification from OFF labels', () => {
+    const r = normalizeOFF({
+      status: 1,
+      product: {
+        product_name: 'Organic Carrots', brands: 'Riverford',
+        categories_tags: ['en:fresh-vegetables', 'en:vegetables'],
+        labels_tags: ['en:organic', 'en:eu-organic'],
+        nutriments: { 'energy-kcal_100g': 41, sugars_100g: 4.7 },
+      },
+    }, 'org1');
+    expect(r?.isOrganic).toBe(true);
+    // Organic short-circuits the residue advisory.
+    expect(r?.pesticideAdvisory).toBeNull();
+  });
+
+  it('attaches a residue advisory for imported chilli peppers', () => {
+    const r = normalizeOFF({
+      status: 1,
+      product: {
+        product_name: 'Bird\'s Eye Chillies', brands: 'Asda',
+        categories_tags: ['en:fresh-vegetables', 'en:peppers'],
+        origins_tags: ['en:thailand'],
+        nutriments: { 'energy-kcal_100g': 40, sugars_100g: 5 },
+      },
+    }, 'chilli1');
+    expect(r?.pesticideAdvisory?.commodity).toBe('Chilli peppers');
+  });
+
+  it('does NOT attach a residue advisory to UK strawberries (false-positive guard)', () => {
+    const r = normalizeOFF({
+      status: 1,
+      product: {
+        product_name: 'British Strawberries', brands: 'Asda',
+        categories_tags: ['en:fresh-fruits', 'en:berries'],
+        origins_tags: ['en:united-kingdom'],
+        nutriments: { 'energy-kcal_100g': 32, sugars_100g: 4.9 },
+      },
+    }, 'straw1');
+    expect(r?.pesticideAdvisory).toBeNull();
+  });
+
+  it('flags imported grapes but not Spanish/EU grapes', () => {
+    const turkish = normalizeOFF({
+      status: 1,
+      product: {
+        product_name: 'Red Seedless Grapes', brands: 'Lidl',
+        categories_tags: ['en:fresh-fruits'],
+        origins_tags: ['en:turkey'],
+        nutriments: { 'energy-kcal_100g': 69, sugars_100g: 16 },
+      },
+    }, 'grape1');
+    expect(turkish?.pesticideAdvisory?.commodity).toBe('Imported grapes');
+
+    const spanish = normalizeOFF({
+      status: 1,
+      product: {
+        product_name: 'Red Seedless Grapes', brands: 'Lidl',
+        categories_tags: ['en:fresh-fruits'],
+        origins_tags: ['en:spain'],
+        nutriments: { 'energy-kcal_100g': 69, sugars_100g: 16 },
+      },
+    }, 'grape2');
+    expect(spanish?.pesticideAdvisory).toBeNull();
+  });
+
   it('falls back to name-based whole_food detection when tags are weak', () => {
     const r = normalizeOFF({
       status: 1,

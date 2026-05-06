@@ -1,5 +1,6 @@
 import type { Product, NutriScoreGrade, NovaGroup, AllergenKey, Additive, FoodCategory } from '@/types/product';
 import { lookupAdditive } from '@/lib/additives/registry';
+import { isOrganicLabelled, lookupPesticideAdvisory } from '@/lib/pesticides/registry';
 
 interface OFFRaw {
   product?: {
@@ -14,6 +15,9 @@ interface OFFRaw {
     allergens_tags?: string[];
     additives_tags?: string[];
     categories_tags?: string[];
+    labels_tags?: string[];
+    origins_tags?: string[];
+    countries_tags?: string[];
     nutriscore_grade?: string;
     ecoscore_grade?: string;
     nova_group?: number | string;
@@ -177,6 +181,15 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
 
   const imageUrl = p.image_front_small_url || p.image_small_url || p.image_url || null;
 
+  const labelsTags = p.labels_tags ?? [];
+  const originsTags = [...(p.origins_tags ?? []), ...(p.countries_tags ?? [])];
+  const isOrganic = isOrganicLabelled(labelsTags);
+  // Don't double-warn on certified-organic produce — by definition it cannot
+  // legally carry the pesticides our registry references.
+  const pesticideAdvisory = isOrganic
+    ? null
+    : lookupPesticideAdvisory(name, category, originsTags);
+
   return {
     id: barcode,
     type: 'barcode',
@@ -204,5 +217,7 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     ecoScore:   pickGrade(p.ecoscore_grade),
     novaGroup,
     category,
+    isOrganic: isOrganic || undefined,
+    pesticideAdvisory,
   };
 }

@@ -1,6 +1,7 @@
 import { ulid } from 'ulid';
 import type { Product, AllergenKey, FoodCategory, NovaGroup, Additive } from '@/types/product';
 import { lookupAdditive } from '@/lib/additives/registry';
+import { lookupPesticideAdvisory } from '@/lib/pesticides/registry';
 
 export const ALLERGEN_ENUM: AllergenKey[] = [
   'gluten', 'dairy', 'eggs', 'nuts', 'peanuts',
@@ -106,11 +107,16 @@ export function responseToProduct(r: AnalysisResponse): Product {
   const components = r.components.map(s => s.trim()).filter(Boolean);
   const category = coerceCategory(r.category, components);
   const nutrition = sanitizeNutrition(r.nutrition);
+  const name = r.name.trim();
+  // Photos carry no origin info — assume worst case (imported) so the gated
+  // commodities still surface their advisory. Individual product name match
+  // is the only signal we have.
+  const pesticideAdvisory = lookupPesticideAdvisory(name, category, []);
   return {
     id: `photo_${ulid()}`,
     type: 'photo',
     brand: '',
-    name: r.name.trim(),
+    name,
     subtitle: 'Photo · detected meal',
     swatch: '#7a8a5e',
     glyph: '◐',
@@ -133,6 +139,7 @@ export function responseToProduct(r: AnalysisResponse): Product {
     novaGroup: deriveNovaGroup(r.processing, category),
     category,
     confidence: clamp01(r.confidence),
+    pesticideAdvisory,
   };
 }
 
