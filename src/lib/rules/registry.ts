@@ -193,6 +193,84 @@ export const RULES: Rule[] = [
     }),
   },
 
+  // ── Energy density (per 100g — Nutri-Score/FSA basis) ──────────
+  // Calorie-dense formulated foods (chocolate, biscuits, crisps) carry risk
+  // independent of any single nutrient. Whole foods (nuts, avocado, oily fish,
+  // olive oil) are energy-dense but protective — exempt them. Skip when null.
+  {
+    id: 'energy_high',
+    severity: 'high',
+    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 550,
+    build: s => ({
+      reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
+      flag:   { tone: 'avoid', label: 'Calorie-dense', detail: `${s.energyPer100g}kcal/100g` },
+    }),
+  },
+  {
+    id: 'energy_moderate',
+    severity: 'moderate',
+    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 450 && s.energyPer100g < 550,
+    build: s => ({
+      reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
+    }),
+  },
+  {
+    id: 'energy_mild',
+    severity: 'low',
+    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 350 && s.energyPer100g < 450,
+    build: s => ({
+      reason: { kind: 'neg', text: `Fairly calorie-dense — ${s.energyPer100g} kcal per 100g` },
+    }),
+  },
+
+  // ── Trans fat (the single most harmful fat — WHO ban target) ───
+  {
+    id: 'trans_fat_ingredient',
+    severity: 'severe',
+    when: s => containsAny(s.ingredientsLower, TRANS_FAT_PATTERNS),
+    build: () => ({
+      reason: { kind: 'neg', text: 'Contains partially hydrogenated oil — industrial trans fat' },
+      flag:   { tone: 'avoid', label: 'Trans fat', detail: 'Hydrogenated oil' },
+    }),
+  },
+  {
+    id: 'trans_fat_high',
+    severity: 'severe',
+    when: s => s.transFatPer100g != null && s.transFatPer100g >= 1,
+    build: s => ({
+      reason: { kind: 'neg', text: `High industrial trans fat — ${s.transFatPer100g}g per 100g` },
+      flag:   { tone: 'avoid', label: 'Trans fat', detail: `${s.transFatPer100g}g/100g` },
+    }),
+  },
+  {
+    id: 'trans_fat_present',
+    severity: 'high',
+    when: s => s.transFatPer100g != null && s.transFatPer100g >= 0.2 && s.transFatPer100g < 1,
+    build: s => ({
+      reason: { kind: 'neg', text: `Trans fat present — ${s.transFatPer100g}g per 100g` },
+    }),
+  },
+
+  // ── Total fat (FSA traffic-light basis, per 100g) ──────────────
+  // Modest so it doesn't double-crush with sat-fat/energy. FSA red >17.5g/100g.
+  {
+    id: 'total_fat_high',
+    severity: 'moderate',
+    when: s => s.category !== 'whole_food' && s.totalFatPer100g != null && s.totalFatPer100g >= 17.5,
+    build: s => ({
+      reason: { kind: 'neg', text: `High total fat — ${s.totalFatPer100g}g per 100g` },
+      flag:   { tone: 'caution', label: 'High fat', detail: `${s.totalFatPer100g}g/100g` },
+    }),
+  },
+  {
+    id: 'total_fat_moderate',
+    severity: 'low',
+    when: s => s.category !== 'whole_food' && s.totalFatPer100g != null && s.totalFatPer100g >= 8 && s.totalFatPer100g < 17.5,
+    build: s => ({
+      reason: { kind: 'neg', text: `Moderate total fat — ${s.totalFatPer100g}g per 100g` },
+    }),
+  },
+
   // ── Refined sugar / UPF ingredient flags ─────────────────────
   {
     id: 'refined_sugar_ingredient',
@@ -486,6 +564,14 @@ const UPF_INGREDIENT_PATTERNS = [
   'microcrystalline cellulose', 'cellulose gum',
   'hydrolyzed protein', 'hydrolysed protein', 'autolyzed yeast extract',
   'high-oleic sunflower oil', 'high oleic sunflower oil',
+];
+
+// Industrial trans fat markers. WHO best practice is a total ban on PHOs.
+const TRANS_FAT_PATTERNS = [
+  'partially hydrogenated', 'partly hydrogenated',
+  'hydrogenated vegetable oil', 'hydrogenated palm', 'hydrogenated soybean',
+  'huile partiellement hydrogénée', 'aceite parcialmente hidrogenado',
+  'teilweise gehärtet', 'teilgehärtet',
 ];
 
 function containsAny(ingredientsLower: string[], patterns: string[]): boolean {
