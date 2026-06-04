@@ -155,6 +155,31 @@ function pickSodium(serving: number | undefined, per100: number | undefined): nu
   return Math.max(0, Math.min(20_000, Math.round(raw * 1000)));
 }
 
+// Capture OFF's authoritative per-100g figures for the concentration-based
+// (FSA) salt + sat-fat rules. Without this, scoring fell back to per-serving
+// numbers, which manufacturers shrink (e.g. a 30g crisp serving) so salt-dense
+// snacks dodged every threshold. Only emitted when OFF actually reports the
+// _100g data; otherwise the signal layer derives it from the serving weight.
+function pickPer100(n: NonNullable<OFFRaw['product']>['nutriments']): { sodium: number; satFat: number } | undefined {
+  const sodium100 = n?.sodium_100g;
+  const satFat100 = n?.['saturated-fat_100g'];
+  if (typeof sodium100 !== 'number' && typeof satFat100 !== 'number') return undefined;
+  return {
+    sodium: Number.isFinite(sodium100) ? Math.max(0, Math.min(20_000, Math.round((sodium100 as number) * 1000))) : 0,
+    satFat: Number.isFinite(satFat100) ? Math.max(0, Math.min(500, Math.round((satFat100 as number) * 10) / 10)) : 0,
+  };
+}
+
+// Pull a serving weight (g/ml) out of OFF's free-text serving_size so the
+// signal layer can derive per-100g density even when the _100g block is absent.
+function parseServingGrams(serving: string | undefined): number | undefined {
+  if (!serving) return undefined;
+  const m = serving.match(/(\d+(?:\.\d+)?)\s*(?:g|ml|gram|grams|millilitres?|milliliters?)\b/i);
+  if (!m) return undefined;
+  const v = parseFloat(m[1]);
+  return Number.isFinite(v) && v > 0 ? v : undefined;
+}
+
 export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
   if (raw.status !== 1 || !raw.product) return null;
   const p = raw.product;
@@ -204,6 +229,8 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     additives,
     nutrition: {
       serving: p.serving_size ?? 'serving',
+      servingGrams: parseServingGrams(p.serving_size),
+      per100: pickPer100(n),
       kcal:    pickServing(n['energy-kcal_serving'], n['energy-kcal_100g'], 2000),
       protein: pickServing(n.proteins_serving, n.proteins_100g, 500),
       carbs:   pickServing(n.carbohydrates_serving, n.carbohydrates_100g, 500),

@@ -126,57 +126,70 @@ export const RULES: Rule[] = [
     }),
   },
 
-  // ── Sodium (graduated) ────────────────────────────────────────
-  // Naturally-occurring sodium in unprocessed whole foods (raw shellfish, plain
-  // celery, eggs) is not the harm target — sodium guidelines target ADDED salt
-  // in processed food. Same exemption pattern as sugar.
+  // ── Sodium (graduated, per 100g/100ml — FSA traffic-light basis) ──
+  // Salt is a CONCENTRATION harm, so we score it per 100g, not per serving:
+  // crisps used to dodge every tier because a 30g serving keeps the per-serving
+  // number low even though the food is salt-dense. FSA thresholds (per 100g):
+  // >1.5g salt (600mg sodium) = red, 0.3–1.5g salt (120–600mg) = amber.
+  // Naturally-occurring sodium in whole foods (shellfish, celery, eggs) is not
+  // the harm target — sodium guidelines target ADDED salt in processed food.
+  // `sodiumPer100g === null` (no serving weight) → skip; we don't guess.
   {
     id: 'sodium_severe',
     severity: 'severe',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 1000,
     build: s => ({
-      reason: { kind: 'neg', text: `Excessive sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'avoid', label: 'Excessive sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `Excessive salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'avoid', label: 'Excessive salt', detail: `${s.sodiumPer100g}mg/100g` },
     }),
   },
   {
     id: 'sodium_high',
     severity: 'high',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 800 && s.sodiumPerServing < 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 600 && s.sodiumPer100g < 1000,
     build: s => ({
-      reason: { kind: 'neg', text: `High sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'avoid', label: 'High sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `High salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'avoid', label: 'High salt', detail: `${s.sodiumPer100g}mg/100g` },
     }),
   },
   {
     id: 'sodium_moderate',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 500 && s.sodiumPerServing < 800,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 300 && s.sodiumPer100g < 600,
     build: s => ({
-      reason: { kind: 'neg', text: `Moderate sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'caution', label: 'Sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `Moderate salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'caution', label: 'Salt', detail: `${s.sodiumPer100g}mg/100g` },
+    }),
+  },
+  {
+    id: 'sodium_mild',
+    severity: 'low',
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 120 && s.sodiumPer100g < 300,
+    build: s => ({
+      reason: { kind: 'neg', text: `Some added salt — ${s.sodiumPer100g}mg sodium per 100g` },
     }),
   },
 
-  // ── Saturated fat (graduated) ─────────────────────────────────
-  // Whole-food saturated fat (avocado, coconut, plain meat, whole eggs, full-fat
-  // dairy) sits inside a complex nutrient matrix and is not equivalent to
-  // industrial sat-fat from hydrogenated oils. Exempt the same way as sugar/sodium.
+  // ── Saturated fat (graduated, per 100g — FSA traffic-light basis) ──
+  // Same concentration logic as salt. FSA thresholds (per 100g): >5g = red,
+  // 1.5–5g = amber. Whole-food saturated fat (avocado, coconut, plain meat,
+  // full-fat dairy) sits in a complex nutrient matrix and is not equivalent to
+  // industrial sat-fat — exempt the same way. Skip when density is unknown.
   {
     id: 'satfat_high',
     severity: 'high',
-    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 8,
+    when: s => s.category !== 'whole_food' && s.satFatPer100g != null && s.satFatPer100g >= 5,
     build: s => ({
-      reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPerServing}g per serving` },
-      flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPerServing}g` },
+      reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPer100g}g per 100g` },
+      flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPer100g}g/100g` },
     }),
   },
   {
     id: 'satfat_moderate',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 5 && s.satFatPerServing < 8,
+    when: s => s.category !== 'whole_food' && s.satFatPer100g != null && s.satFatPer100g >= 3 && s.satFatPer100g < 5,
     build: s => ({
-      reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPerServing}g per serving` },
+      reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPer100g}g per 100g` },
     }),
   },
 

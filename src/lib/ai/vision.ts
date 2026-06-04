@@ -12,6 +12,7 @@ const SYSTEM_PROMPT = `You analyze food photos for a nutrition app. Identify wha
 CONFIDENCE: <0.4 blurry/ambiguous, 0.4-0.7 partially obscured, >0.7 clearly identifiable.
 
 NUTRITION: realistic typical values for the visible portion. For packaged products (a bag of candy, a can of soda), use a typical single-serving size (e.g. ~25g for gummy sweets, 330ml for a soda can) — not the whole pack — and reflect that the per-serving sugar/sodium for these products is high.
+SERVING WEIGHT: also estimate servingGrams — the net weight in grams (or ml for drinks) of that single serving you costed the nutrition against (e.g. 25 for a handful of gummies, 30 for a portion of crisps, 330 for a soda can). This anchors the per-100g salt/fat assessment, so be realistic. If you genuinely cannot tell, return 0.
 
 CATEGORY: pick the closest tag.
   - whole_food: single-ingredient, minimally-prepared natural food (apple, banana, raw nuts in or out of shell, walnut halves, almonds, raw vegetables, plain raw meat/fish, eggs, plain milk). Use this for ANY identifiable whole food — even if it's served in a bowl, plate, or open bag — as long as it's the food itself with no added oil/salt/sugar/coating visible.
@@ -43,7 +44,7 @@ const USER_PROMPT = `Analyze this food photo. Return:
 - name: one-line product/meal name, properly capitalized (e.g. "Grain bowl with salmon", "Haribo Starmix gummies", "Coca-Cola can")
 - components: 3-8 visible foods/ingredients
 - allergens: subset of [gluten, dairy, eggs, nuts, peanuts, soy, fish, shellfish, sesame]
-- nutrition (per realistic single serving): kcal, protein g, carbs g, sugar g, fat g, satFat g, fiber g, sodium mg
+- nutrition (per realistic single serving): servingGrams (net weight g/ml of that serving, 0 if unknown), kcal, protein g, carbs g, sugar g, fat g, satFat g, fiber g, sodium mg
 - category: one of [meal, whole_food, snack, beverage, dessert, candy, fast_food, baked_good, fried_food, processed_meat]
 - processing: 1-4 NOVA group
 - flaggedIngredients: array of E-number codes (e.g. ["E150d","E338"]) — empty if none confidently inferable
@@ -66,8 +67,9 @@ const JSON_SCHEMA = {
       nutrition: {
         type: 'object',
         additionalProperties: false,
-        required: ['kcal', 'protein', 'carbs', 'sugar', 'fat', 'satFat', 'fiber', 'sodium'],
+        required: ['servingGrams', 'kcal', 'protein', 'carbs', 'sugar', 'fat', 'satFat', 'fiber', 'sodium'],
         properties: {
+          servingGrams: { type: 'number' },
           kcal: { type: 'number' },
           protein: { type: 'number' },
           carbs: { type: 'number' },

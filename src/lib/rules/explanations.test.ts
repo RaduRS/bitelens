@@ -57,15 +57,16 @@ describe('summary text', () => {
     expect(r.summary).toMatch(/fast food/i);
   });
 
-  it('high-sodium product names sodium instead of falling through to the generic line', () => {
+  it('high-salt product names salt on a per-100g basis instead of the generic line', () => {
     const broth = baseBarcode({
       name: 'Salty broth',
-      nutrition: { serving: '250ml', kcal: 30, protein: 1, carbs: 4, sugar: 1, fat: 1, satFat: 0, fiber: 0, sodium: 1200 },
+      // 700mg sodium / 100ml = FSA "red" salt on a per-100g/100ml basis.
+      nutrition: { serving: '100ml', kcal: 30, protein: 1, carbs: 4, sugar: 1, fat: 1, satFat: 0, fiber: 0, sodium: 700 },
       novaGroup: 3,
     });
     const r = evaluate(broth, DEFAULT_PROFILE);
     expect(r.summary).toMatch(/sodium/i);
-    expect(r.summary).toMatch(/1200/);
+    expect(r.summary).toMatch(/700/);
   });
 
   it('high-saturated-fat product surfaces sat fat in the summary', () => {

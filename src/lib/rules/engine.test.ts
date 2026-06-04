@@ -236,6 +236,55 @@ describe('evaluate', () => {
     expect(r.verdict).toBe('good');
   });
 
+  it('a bag of crisps is Avoid — salt registers on a per-100g basis', () => {
+    const crisps: Product = {
+      id: 'p_crisp_max', type: 'barcode', brand: 'Crisp Max', name: 'Cheese Crisps',
+      subtitle: '30g bag', swatch: '#caa', glyph: 'C',
+      ingredients: ['Potatoes', 'Sunflower oil', 'Cheese powder (milk)', 'Whey powder (milk)', 'Salt', 'Flavouring'],
+      allergens: ['dairy'],
+      additives: [
+        { code: 'E621', name: 'Monosodium glutamate', risk: 'moderate', detail: '' },
+        { code: 'E627', name: 'Disodium guanylate', risk: 'low', detail: '' },
+        { code: 'E631', name: 'Disodium inosinate', risk: 'low', detail: '' },
+      ],
+      // OFF reports a 30g serving; ~0.5g salt/serving = ~1.7g salt/100g (FSA red).
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 160, protein: 1.8, carbs: 14, sugar: 0.6, fat: 10.5, satFat: 1.5, fiber: 1, sodium: 200 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crisps, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('avoid');
+    expect(r.score).toBeLessThan(40);
+    expect(r.triggeredRuleIds).toContain('sodium_high');
+  });
+
+  it('does not credit a bones benefit to cheese-flavoured ultra-processed crisps', () => {
+    const crisps: Product = {
+      id: 'p_crisp_max2', type: 'barcode', brand: 'Crisp Max', name: 'Cheese Crisps',
+      subtitle: '30g bag', swatch: '#caa', glyph: 'C',
+      ingredients: ['Potatoes', 'Sunflower oil', 'Cheese powder (milk)', 'Whey powder (milk)', 'Salt', 'Flavouring'],
+      allergens: ['dairy'], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 160, protein: 1.8, carbs: 14, sugar: 0.6, fat: 10.5, satFat: 1.5, fiber: 1, sodium: 200 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crisps, DEFAULT_PROFILE);
+    expect(r.benefits.map(b => b.organ)).not.toContain('bones');
+  });
+
+  it('a photo snack with a known serving weight gets the per-100g salt penalty', () => {
+    const cracker: Product = {
+      id: 'photo_cracker', type: 'photo', brand: '', name: 'Salted crackers',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Wheat crackers', 'Salt'],
+      allergens: ['gluten'], additives: [],
+      nutrition: { serving: 'Estimated serving', servingGrams: 30, kcal: 130, protein: 3, carbs: 22, sugar: 1, fat: 4, satFat: 1, fiber: 1, sodium: 250 },
+      nutriScore: null, ecoScore: null, novaGroup: 3, category: 'snack',
+      confidence: 0.85,
+    };
+    const r = evaluate(cracker, DEFAULT_PROFILE);
+    // 250mg / 30g * 100 = 833mg per 100g → FSA "red" salt
+    expect(r.triggeredRuleIds).toContain('sodium_high');
+  });
+
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
     const baconPhoto: Product = {
       id: 'photo_bacon', type: 'photo', brand: '', name: 'Bacon strips',

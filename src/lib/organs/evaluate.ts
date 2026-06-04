@@ -10,10 +10,15 @@ const UPF_CATEGORIES: FoodCategory[] = [
 ];
 
 // Don't credit organ benefits to ultra-processed/junk products even if their
-// ingredient list mentions a recognized food (e.g. "fruit juice from concentrate"
-// in candy). The negative signals dominate.
+// ingredient list mentions a recognized food. The classic false positive: a
+// cheese-flavoured bag of crisps lists "cheese powder (milk)" and earns a
+// "supports bones" halo — when in reality the salt load is a NET NEGATIVE for
+// bone density. Packaged savoury snacks (chips/crisps/crackers/popcorn) are
+// quintessential ultra-processed food, so they get no organ credit regardless
+// of trace recognizable ingredients.
 function isJunk(s: SignalSet): boolean {
   if (s.category && UPF_CATEGORIES.includes(s.category)) return true;
+  if (s.category === 'snack') return true;
   if (s.novaGroup === 4 && s.sugarShareOfKcal >= 0.3) return true;
   return false;
 }

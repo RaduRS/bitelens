@@ -26,4 +26,32 @@ describe('extractSignals', () => {
     expect(s.additiveMaxRisk).toBe('none');
     expect(s.additiveCount).toBe(0);
   });
+
+  it('derives per-100g salt/sat-fat density from servingGrams', () => {
+    const crisps = {
+      id: 'x', type: 'barcode' as const, brand: 'Crisp Max', name: 'Cheese Crisps',
+      subtitle: '30g', swatch: '#000', glyph: 'C',
+      ingredients: ['Potatoes'], allergens: [], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 160, protein: 1.8, carbs: 14, sugar: 0.6, fat: 10.5, satFat: 1.5, fiber: 1, sodium: 200 },
+      nutriScore: 'D' as const, ecoScore: null, novaGroup: 4 as const, category: 'snack' as const,
+    };
+    const s = extractSignals(crisps);
+    // 200mg sodium / 30g * 100 = 667mg per 100g (FSA "red" salt)
+    expect(s.sodiumPer100g).toBeGreaterThan(600);
+    // 1.5g satFat / 30g * 100 = 5g per 100g
+    expect(s.satFatPer100g).toBeCloseTo(5, 0);
+  });
+
+  it('leaves per-100g density null when no serving weight is known', () => {
+    const photo = {
+      id: 'p', type: 'photo' as const, brand: '', name: 'Mystery plate',
+      subtitle: '', swatch: '#000', glyph: '◐', components: ['food'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated serving', kcal: 300, protein: 5, carbs: 30, sugar: 4, fat: 10, satFat: 3, fiber: 4, sodium: 250 },
+      nutriScore: null, ecoScore: null, novaGroup: null, category: 'meal' as const,
+    };
+    const s = extractSignals(photo);
+    expect(s.sodiumPer100g).toBeNull();
+    expect(s.satFatPer100g).toBeNull();
+  });
 });

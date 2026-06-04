@@ -2,7 +2,6 @@ import type { SignalSet } from './signals';
 import type { Product } from '@/types/product';
 
 const HIGH_SUGAR_IDS = ['sugar_severe', 'sugar_high'];
-const ANY_SUGAR_IDS = [...HIGH_SUGAR_IDS, 'sugar_moderate'];
 
 function any(triggered: string[], ids: readonly string[]): boolean {
   return ids.some(id => triggered.includes(id));
@@ -149,10 +148,10 @@ export function buildSummary(triggered: string[], s: SignalSet, p: Product): str
     return 'Contains a high-risk additive.';
   }
   if (triggered.includes('sodium_severe') || triggered.includes('sodium_high')) {
-    return `High sodium — ${s.sodiumPerServing}mg per serving.`;
+    return `High salt — ${s.sodiumPer100g}mg sodium per 100g.`;
   }
   if (triggered.includes('satfat_high')) {
-    return `High saturated fat — ${s.satFatPerServing}g per serving.`;
+    return `High saturated fat — ${s.satFatPer100g}g per 100g.`;
   }
   if (any(triggered, HIGH_SUGAR_IDS)) {
     const word = triggered.includes('sugar_severe') ? 'Excessive' : 'High';
@@ -165,6 +164,9 @@ export function buildSummary(triggered: string[], s: SignalSet, p: Product): str
   // ── Mid-range concerns that previously fell through to the catch-all. ──
   if (triggered.includes('sugar_moderate')) {
     return `Sweeter than ideal — ${s.sugarPerServing}g sugar per serving.`;
+  }
+  if (triggered.includes('sodium_moderate')) {
+    return `Salt-forward — ${s.sodiumPer100g}mg sodium per 100g.`;
   }
   if (triggered.includes('refined_sugar_ingredient')) {
     return 'Contains refined sugars (syrups, HFCS).';

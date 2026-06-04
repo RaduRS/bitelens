@@ -18,6 +18,7 @@ export interface AnalysisResponse {
   components: string[];
   allergens: AllergenKey[];
   nutrition: {
+    servingGrams: number;
     kcal: number;
     protein: number;
     carbs: number;
@@ -92,6 +93,9 @@ function coerceCategory(category: FoodCategory, components: string[]): FoodCateg
 function sanitizeNutrition(n: AnalysisResponse['nutrition']): AnalysisResponse['nutrition'] {
   const clampGrams = (x: number) => Math.max(0, Math.min(500, Number.isFinite(x) ? x : 0));
   return {
+    // 1g–3000g/ml covers a single sweet through a large shared platter. 0/absent
+    // → 0, which the signal layer treats as "no weight" and skips density rules.
+    servingGrams: Math.max(0, Math.min(3000, Number.isFinite(n.servingGrams) ? n.servingGrams : 0)),
     kcal:    Math.max(0, Math.min(2000, Number.isFinite(n.kcal) ? n.kcal : 0)),
     protein: clampGrams(n.protein),
     carbs:   clampGrams(n.carbs),
@@ -125,6 +129,7 @@ export function responseToProduct(r: AnalysisResponse): Product {
     additives: deriveAdditives(r.flaggedIngredients ?? [], category),
     nutrition: {
       serving: 'Estimated serving',
+      servingGrams: nutrition.servingGrams > 0 ? round(nutrition.servingGrams) : undefined,
       kcal: round(nutrition.kcal),
       protein: round(nutrition.protein),
       carbs: round(nutrition.carbs),
