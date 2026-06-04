@@ -152,7 +152,7 @@ describe('evaluate', () => {
       subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
       components: ['Apple', 'Banana'],
       allergens: [], additives: [],
-      nutrition: { serving: 'Estimated serving', kcal: 200, protein: 2, carbs: 52, sugar: 33, fat: 0.6, satFat: 0.2, fiber: 7, sodium: 2 },
+      nutrition: { serving: 'Estimated serving', servingGrams: 230, kcal: 200, protein: 2, carbs: 52, sugar: 33, fat: 0.6, satFat: 0.2, fiber: 7, sodium: 2 },
       nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
       confidence: 0.9,
     };
@@ -358,6 +358,34 @@ describe('evaluate', () => {
     expect(r.triggeredRuleIds).toContain('category_snack');
     expect(r.triggeredRuleIds).not.toContain('pos_low_sugar');
     expect(r.score).toBeLessThanOrEqual(55);
+  });
+
+  it('lets positives offset penalties for minimally-processed food', () => {
+    const stew: Product = {
+      id: 'p_stew', type: 'barcode', brand: 'Hearth', name: 'Lentil Stew',
+      subtitle: '400g', swatch: '#000', glyph: 'L',
+      ingredients: ['Lentils', 'Tomato', 'Onion', 'Olive oil'], allergens: [], additives: [],
+      nutrition: { serving: '200g', servingGrams: 200, kcal: 180, protein: 12, carbs: 22, sugar: 3, fat: 4, satFat: 0.6, fiber: 8, sodium: 360, fvlPercent: 75 },
+      nutriScore: 'A', ecoScore: null, novaGroup: 3, category: 'meal',
+    };
+    const r = evaluate(stew, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('pos_high_fiber');
+    expect(r.triggeredRuleIds).toContain('pos_fvl_content');
+    expect(r.verdict).toBe('good');
+  });
+
+  it('does NOT let positives rescue an ultra-processed product', () => {
+    const bar: Product = {
+      id: 'p_fortbar', type: 'barcode', brand: 'GymCo', name: 'Fortified Candy Bar',
+      subtitle: '60g', swatch: '#000', glyph: 'B',
+      ingredients: ['Glucose syrup', 'Sugar', 'Soy protein isolate', 'Inulin'], allergens: ['soy'], additives: [],
+      nutrition: { serving: '60g', servingGrams: 60, kcal: 300, protein: 20, carbs: 40, sugar: 30, fat: 8, satFat: 4, fiber: 9, sodium: 200, fvlPercent: 0 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'candy',
+    };
+    const r = evaluate(bar, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).not.toContain('pos_high_protein');
+    expect(r.triggeredRuleIds).not.toContain('pos_high_fiber');
+    expect(r.verdict).toBe('avoid');
   });
 
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {

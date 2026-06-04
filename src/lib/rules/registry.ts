@@ -6,6 +6,7 @@ import type { SignalSet } from './signals';
 export interface RuleHit {
   reason?: Reason;
   flag?: Flag;
+  bonus?: number;   // positive offset points (only meaningful on severity 'pos')
 }
 
 export interface Rule {
@@ -18,6 +19,14 @@ export interface Rule {
 const UPF_CATEGORIES: FoodCategory[] = [
   'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
 ];
+
+// Positive offsets must never rescue ultra-processed food. Eligible only when
+// the product is NOT a UPF category, NOT a packaged snack, and NOT NOVA 4.
+function offsetEligible(s: SignalSet): boolean {
+  if (s.category && UPF_CATEGORIES.includes(s.category)) return false;
+  if (s.category === 'snack') return false;
+  return s.novaGroup == null || s.novaGroup <= 3;
+}
 
 export const RULES: Rule[] = [
   // ── Category-driven UPF penalties (strongest signal we have for photos) ──
@@ -493,14 +502,30 @@ export const RULES: Rule[] = [
   {
     id: 'pos_high_protein',
     severity: 'pos',
-    when: s => s.proteinPerServing >= 10,
-    build: s => ({ reason: { kind: 'pos', text: `Good protein content (${s.proteinPerServing}g)` } }),
+    when: s => offsetEligible(s) && s.proteinPer100g != null && s.proteinPer100g >= 8,
+    build: s => ({
+      reason: { kind: 'pos', text: `Good protein (${s.proteinPer100g}g/100g)` },
+      bonus: s.proteinPer100g != null && s.proteinPer100g >= 16 ? 8 : 4,
+    }),
   },
   {
     id: 'pos_high_fiber',
     severity: 'pos',
-    when: s => s.fiberPerServing >= 5,
-    build: s => ({ reason: { kind: 'pos', text: `Good fiber (${s.fiberPerServing}g)` } }),
+    when: s => offsetEligible(s) && s.fiberPer100g != null && s.fiberPer100g >= 3,
+    build: s => ({
+      reason: { kind: 'pos', text: `Good fibre (${s.fiberPer100g}g/100g)` },
+      bonus: s.fiberPer100g != null && s.fiberPer100g >= 6 ? 8 : 4,
+    }),
+  },
+  {
+    id: 'pos_fvl_content',
+    severity: 'pos',
+    when: s => offsetEligible(s) && s.fvlPercent != null && s.fvlPercent >= 40,
+    build: s => ({
+      reason: { kind: 'pos', text: `${Math.round(s.fvlPercent!)}% fruit/veg/legume/nut` },
+      flag:   { tone: 'good', label: 'Plant-rich' },
+      bonus: s.fvlPercent! >= 80 ? 10 : s.fvlPercent! >= 60 ? 6 : 3,
+    }),
   },
   {
     id: 'pos_nutri_a_b',

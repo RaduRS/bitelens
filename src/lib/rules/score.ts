@@ -9,6 +9,11 @@ export const SEVERITY_POINTS: Record<Severity, number> = {
   severe: 45,
 };
 
+// Total positive offset is capped so good nutrients soften a verdict without
+// erasing real harms. Tuned against Nutri-Score's max positive (17 pts) scaled
+// to our 100-point space.
+export const MAX_OFFSET = 25;
+
 export function bandToVerdict(score: number): VerdictLevel {
   if (score >= 70) return 'good';
   if (score >= 40) return 'caution';
