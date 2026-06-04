@@ -170,4 +170,24 @@ describe('normalizeOFF', () => {
     }, 'ban1');
     expect(r?.category).toBe('whole_food');
   });
+
+  it('captures per-100g energy/fat/fibre/protein, transFat, and FVL%', () => {
+    const raw = {
+      status: 1,
+      product: {
+        code: '111', product_name: 'Veg Soup', brands: 'X', quantity: '300g',
+        categories_tags: ['en:soups'], serving_size: '250 g',
+        nutriments: {
+          'energy-kcal_100g': 60, fat_100g: 2, 'saturated-fat_100g': 0.5,
+          'trans-fat_100g': 0, fiber_100g: 3, proteins_100g: 4, sodium_100g: 0.3,
+          'fruits-vegetables-legumes-estimate-from-ingredients_100g': 70,
+        },
+      },
+    };
+    const p = normalizeOFF(raw as Parameters<typeof normalizeOFF>[0], '111')!;
+    expect(p.nutrition.per100?.kcal).toBe(60);
+    expect(p.nutrition.per100?.fiber).toBe(3);
+    expect(p.nutrition.per100?.protein).toBe(4);
+    expect(p.nutrition.fvlPercent).toBe(70);
+  });
 });

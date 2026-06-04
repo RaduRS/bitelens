@@ -152,7 +152,7 @@ describe('evaluate', () => {
       subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
       components: ['Apple', 'Banana'],
       allergens: [], additives: [],
-      nutrition: { serving: 'Estimated serving', kcal: 200, protein: 2, carbs: 52, sugar: 33, fat: 0.6, satFat: 0.2, fiber: 7, sodium: 2 },
+      nutrition: { serving: 'Estimated serving', servingGrams: 230, kcal: 200, protein: 2, carbs: 52, sugar: 33, fat: 0.6, satFat: 0.2, fiber: 7, sodium: 2 },
       nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
       confidence: 0.9,
     };
@@ -234,6 +234,175 @@ describe('evaluate', () => {
     const r = evaluate(organic, DEFAULT_PROFILE);
     expect(r.triggeredRuleIds).toContain('pos_organic_certified');
     expect(r.verdict).toBe('good');
+  });
+
+  it('a bag of crisps is Avoid — salt registers on a per-100g basis', () => {
+    const crisps: Product = {
+      id: 'p_crisp_max', type: 'barcode', brand: 'Crisp Max', name: 'Cheese Crisps',
+      subtitle: '30g bag', swatch: '#caa', glyph: 'C',
+      ingredients: ['Potatoes', 'Sunflower oil', 'Cheese powder (milk)', 'Whey powder (milk)', 'Salt', 'Flavouring'],
+      allergens: ['dairy'],
+      additives: [
+        { code: 'E621', name: 'Monosodium glutamate', risk: 'moderate', detail: '' },
+        { code: 'E627', name: 'Disodium guanylate', risk: 'low', detail: '' },
+        { code: 'E631', name: 'Disodium inosinate', risk: 'low', detail: '' },
+      ],
+      // OFF reports a 30g serving; ~0.5g salt/serving = ~1.7g salt/100g (FSA red).
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 160, protein: 1.8, carbs: 14, sugar: 0.6, fat: 10.5, satFat: 1.5, fiber: 1, sodium: 200 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crisps, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('avoid');
+    expect(r.score).toBeLessThan(40);
+    expect(r.triggeredRuleIds).toContain('sodium_high');
+  });
+
+  it('does not credit a bones benefit to cheese-flavoured ultra-processed crisps', () => {
+    const crisps: Product = {
+      id: 'p_crisp_max2', type: 'barcode', brand: 'Crisp Max', name: 'Cheese Crisps',
+      subtitle: '30g bag', swatch: '#caa', glyph: 'C',
+      ingredients: ['Potatoes', 'Sunflower oil', 'Cheese powder (milk)', 'Whey powder (milk)', 'Salt', 'Flavouring'],
+      allergens: ['dairy'], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 160, protein: 1.8, carbs: 14, sugar: 0.6, fat: 10.5, satFat: 1.5, fiber: 1, sodium: 200 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crisps, DEFAULT_PROFILE);
+    expect(r.benefits.map(b => b.organ)).not.toContain('bones');
+  });
+
+  it('a photo snack with a known serving weight gets the per-100g salt penalty', () => {
+    const cracker: Product = {
+      id: 'photo_cracker', type: 'photo', brand: '', name: 'Salted crackers',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Wheat crackers', 'Salt'],
+      allergens: ['gluten'], additives: [],
+      nutrition: { serving: 'Estimated serving', servingGrams: 30, kcal: 130, protein: 3, carbs: 22, sugar: 1, fat: 4, satFat: 1, fiber: 1, sodium: 250 },
+      nutriScore: null, ecoScore: null, novaGroup: 3, category: 'snack',
+      confidence: 0.85,
+    };
+    const r = evaluate(cracker, DEFAULT_PROFILE);
+    // 250mg / 30g * 100 = 833mg per 100g → FSA "red" salt
+    expect(r.triggeredRuleIds).toContain('sodium_high');
+  });
+
+  it('penalises calorie-dense formulated food and exempts energy-dense whole foods', () => {
+    const biscuit: Product = {
+      id: 'p_biscuit', type: 'barcode', brand: 'Snap', name: 'Choc Biscuits',
+      subtitle: '40g', swatch: '#000', glyph: 'B',
+      ingredients: ['Wheat flour', 'Sugar', 'Palm oil'], allergens: ['gluten'], additives: [],
+      nutrition: { serving: '40g', servingGrams: 40, kcal: 222, protein: 2, carbs: 28, sugar: 12, fat: 11, satFat: 5, fiber: 1, sodium: 100 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'baked_good',
+    };
+    // 222 / 40 * 100 = 555 kcal/100g → energy_high
+    expect(evaluate(biscuit, DEFAULT_PROFILE).triggeredRuleIds).toContain('energy_high');
+
+    const almonds: Product = {
+      id: 'p_almonds', type: 'barcode', brand: 'Raw', name: 'Almonds',
+      subtitle: '30g', swatch: '#000', glyph: 'A',
+      ingredients: ['Almonds'], allergens: ['nuts'], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 174, protein: 6, carbs: 6, sugar: 1, fat: 15, satFat: 1, fiber: 4, sodium: 0 },
+      nutriScore: 'A', ecoScore: null, novaGroup: 1, category: 'whole_food',
+    };
+    expect(evaluate(almonds, DEFAULT_PROFILE).triggeredRuleIds).not.toContain('energy_high');
+  });
+
+  it('flags industrial trans fat as a severe harm', () => {
+    const margarine: Product = {
+      id: 'p_phos', type: 'barcode', brand: 'OldSpread', name: 'Baking Spread',
+      subtitle: '250g', swatch: '#000', glyph: 'S',
+      ingredients: ['Partially hydrogenated vegetable oil', 'Water', 'Salt'],
+      allergens: [], additives: [],
+      nutrition: { serving: '10g', servingGrams: 10, kcal: 72, protein: 0, carbs: 0, sugar: 0, fat: 8, satFat: 2, fiber: 0, sodium: 80 },
+      nutriScore: 'E', ecoScore: null, novaGroup: 4, category: null,
+    };
+    const r = evaluate(margarine, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('trans_fat_ingredient');
+    expect(r.verdict).toBe('avoid');
+
+    const product: Product = {
+      ...margarine, id: 'p_tf', ingredients: ['Vegetable oil'],
+      nutrition: { serving: '100g', servingGrams: 100, kcal: 500, protein: 1, carbs: 2, sugar: 1, fat: 50, satFat: 10, fiber: 0, sodium: 80, transFat: 1.5 },
+    };
+    expect(evaluate(product, DEFAULT_PROFILE).triggeredRuleIds).toContain('trans_fat_high');
+  });
+
+  it('applies FSA total-fat penalty per 100g, whole-food exempt', () => {
+    const sauce: Product = {
+      id: 'p_sauce', type: 'barcode', brand: 'Rich', name: 'Cheese Sauce',
+      subtitle: '100g', swatch: '#000', glyph: 'S',
+      ingredients: ['Cream', 'Cheese', 'Starch'], allergens: ['dairy'], additives: [],
+      nutrition: { serving: '100g', servingGrams: 100, kcal: 300, protein: 5, carbs: 6, sugar: 2, fat: 28, satFat: 4, fiber: 0, sodium: 300 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 3, category: null,
+    };
+    expect(evaluate(sauce, DEFAULT_PROFILE).triggeredRuleIds).toContain('total_fat_high');
+
+    const avocado: Product = {
+      id: 'p_avo', type: 'barcode', brand: 'Fresh', name: 'Avocado',
+      subtitle: '1 each', swatch: '#000', glyph: 'A',
+      ingredients: ['Avocado'], allergens: [], additives: [],
+      nutrition: { serving: '100g', servingGrams: 100, kcal: 160, protein: 2, carbs: 9, sugar: 1, fat: 15, satFat: 2, fiber: 7, sodium: 7 },
+      nutriScore: 'A', ecoScore: null, novaGroup: 1, category: 'whole_food',
+    };
+    expect(evaluate(avocado, DEFAULT_PROFILE).triggeredRuleIds).not.toContain('total_fat_high');
+  });
+
+  it('treats snack as a capped processed category with no green low-sugar flag', () => {
+    const crackers: Product = {
+      id: 'p_crackers', type: 'barcode', brand: 'Crackly', name: 'Cream Crackers',
+      subtitle: '25g', swatch: '#000', glyph: 'C',
+      ingredients: ['Wheat flour', 'Vegetable oil', 'Salt'], allergens: ['gluten'], additives: [],
+      nutrition: { serving: '25g', servingGrams: 25, kcal: 110, protein: 2, carbs: 18, sugar: 1, fat: 3, satFat: 1, fiber: 1, sodium: 120 },
+      nutriScore: 'C', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crackers, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('category_snack');
+    expect(r.triggeredRuleIds).not.toContain('pos_low_sugar');
+    expect(r.score).toBeLessThanOrEqual(55);
+  });
+
+  it('exempts nut/seed-based foods from energy + total-fat penalties (healthy fats)', () => {
+    const saltedAlmonds: Product = {
+      id: 'p_saltalm', type: 'barcode', brand: 'Nutty', name: 'Salted Almonds',
+      subtitle: '30g', swatch: '#000', glyph: 'A',
+      ingredients: ['Almonds', 'Salt'], allergens: ['nuts'], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 180, protein: 6, carbs: 2, sugar: 1, fat: 16, satFat: 1, fiber: 3, sodium: 150 },
+      nutriScore: 'C', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(saltedAlmonds, DEFAULT_PROFILE);
+    // 600 kcal/100g and 53g fat/100g, but nut-based → not penalised on those axes
+    expect(r.triggeredRuleIds).not.toContain('energy_high');
+    expect(r.triggeredRuleIds).not.toContain('total_fat_high');
+    // Still a salty processed snack — caution, not a rock-bottom avoid like cola.
+    expect(r.verdict).not.toBe('good');
+    expect(r.score).toBeGreaterThan(15);
+  });
+
+  it('lets positives offset penalties for minimally-processed food', () => {
+    const stew: Product = {
+      id: 'p_stew', type: 'barcode', brand: 'Hearth', name: 'Lentil Stew',
+      subtitle: '400g', swatch: '#000', glyph: 'L',
+      ingredients: ['Lentils', 'Tomato', 'Onion', 'Olive oil'], allergens: [], additives: [],
+      nutrition: { serving: '200g', servingGrams: 200, kcal: 180, protein: 12, carbs: 22, sugar: 3, fat: 4, satFat: 0.6, fiber: 8, sodium: 360, fvlPercent: 75 },
+      nutriScore: 'A', ecoScore: null, novaGroup: 3, category: 'meal',
+    };
+    const r = evaluate(stew, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('pos_high_fiber');
+    expect(r.triggeredRuleIds).toContain('pos_fvl_content');
+    expect(r.verdict).toBe('good');
+  });
+
+  it('does NOT let positives rescue an ultra-processed product', () => {
+    const bar: Product = {
+      id: 'p_fortbar', type: 'barcode', brand: 'GymCo', name: 'Fortified Candy Bar',
+      subtitle: '60g', swatch: '#000', glyph: 'B',
+      ingredients: ['Glucose syrup', 'Sugar', 'Soy protein isolate', 'Inulin'], allergens: ['soy'], additives: [],
+      nutrition: { serving: '60g', servingGrams: 60, kcal: 300, protein: 20, carbs: 40, sugar: 30, fat: 8, satFat: 4, fiber: 9, sodium: 200, fvlPercent: 0 },
+      nutriScore: 'D', ecoScore: null, novaGroup: 4, category: 'candy',
+    };
+    const r = evaluate(bar, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).not.toContain('pos_high_protein');
+    expect(r.triggeredRuleIds).not.toContain('pos_high_fiber');
+    expect(r.verdict).toBe('avoid');
   });
 
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {

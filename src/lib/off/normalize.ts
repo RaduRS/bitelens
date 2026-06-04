@@ -31,6 +31,9 @@ interface OFFRaw {
       'saturated-fat_serving'?: number; 'saturated-fat_100g'?: number;
       fiber_serving?: number; fiber_100g?: number;
       sodium_serving?: number; sodium_100g?: number;
+      'trans-fat_serving'?: number; 'trans-fat_100g'?: number;
+      'fruits-vegetables-legumes-estimate-from-ingredients_100g'?: number;
+      'fruits-vegetables-nuts-estimate-from-ingredients_100g'?: number;
     };
   };
   status?: number;
@@ -155,6 +158,46 @@ function pickSodium(serving: number | undefined, per100: number | undefined): nu
   return Math.max(0, Math.min(20_000, Math.round(raw * 1000)));
 }
 
+// Capture OFF's authoritative per-100g figures for the concentration-based
+// (FSA) salt + sat-fat rules. Without this, scoring fell back to per-serving
+// numbers, which manufacturers shrink (e.g. a 30g crisp serving) so salt-dense
+// snacks dodged every threshold. Only emitted when OFF actually reports the
+// _100g data; otherwise the signal layer derives it from the serving weight.
+function pickPer100(n: NonNullable<OFFRaw['product']>['nutriments']): NonNullable<Product['nutrition']['per100']> | undefined {
+  if (!n) return undefined;
+  const g = (v: unknown, max: number) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round((v as number) * 10) / 10)) : undefined;
+  const mg = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(20_000, Math.round((v as number) * 1000))) : undefined;
+  const per100 = {
+    sodium: mg(n.sodium_100g),
+    satFat: g(n['saturated-fat_100g'], 500),
+    transFat: g(n['trans-fat_100g'], 500),
+    fat: g(n.fat_100g, 500),
+    kcal: typeof n['energy-kcal_100g'] === 'number' && Number.isFinite(n['energy-kcal_100g'])
+      ? Math.max(0, Math.min(2000, Math.round(n['energy-kcal_100g'] as number))) : undefined,
+    fiber: g(n.fiber_100g, 500),
+    protein: g(n.proteins_100g, 500),
+  };
+  return Object.values(per100).some(v => v !== undefined) ? per100 : undefined;
+}
+
+function pickFvlPercent(n: NonNullable<OFFRaw['product']>['nutriments']): number | undefined {
+  const v = n?.['fruits-vegetables-legumes-estimate-from-ingredients_100g']
+    ?? n?.['fruits-vegetables-nuts-estimate-from-ingredients_100g'];
+  return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : undefined;
+}
+
+// Pull a serving weight (g/ml) out of OFF's free-text serving_size so the
+// signal layer can derive per-100g density even when the _100g block is absent.
+function parseServingGrams(serving: string | undefined): number | undefined {
+  if (!serving) return undefined;
+  const m = serving.match(/(\d+(?:\.\d+)?)\s*(?:g|ml|gram|grams|millilitres?|milliliters?)\b/i);
+  if (!m) return undefined;
+  const v = parseFloat(m[1]);
+  return Number.isFinite(v) && v > 0 ? v : undefined;
+}
+
 export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
   if (raw.status !== 1 || !raw.product) return null;
   const p = raw.product;
@@ -204,6 +247,9 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
     additives,
     nutrition: {
       serving: p.serving_size ?? 'serving',
+      servingGrams: parseServingGrams(p.serving_size),
+      per100: pickPer100(n),
+      fvlPercent: pickFvlPercent(n),
       kcal:    pickServing(n['energy-kcal_serving'], n['energy-kcal_100g'], 2000),
       protein: pickServing(n.proteins_serving, n.proteins_100g, 500),
       carbs:   pickServing(n.carbohydrates_serving, n.carbohydrates_100g, 500),
@@ -212,6 +258,7 @@ export function normalizeOFF(raw: OFFRaw, barcode: string): Product | null {
       satFat:  pickServing(n['saturated-fat_serving'], n['saturated-fat_100g'], 500),
       fiber:   pickServing(n.fiber_serving, n.fiber_100g, 500),
       sodium:  pickSodium(n.sodium_serving, n.sodium_100g),
+      transFat: pickServing(n['trans-fat_serving'], n['trans-fat_100g'], 500),
     },
     nutriScore: pickGrade(p.nutriscore_grade),
     ecoScore:   pickGrade(p.ecoscore_grade),

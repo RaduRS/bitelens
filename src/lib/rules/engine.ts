@@ -3,7 +3,7 @@ import type { Profile } from '@/types/profile';
 import type { VerdictResult, Reason, Flag } from '@/types/verdict';
 import { extractSignals } from './signals';
 import { RULES } from './registry';
-import { SEVERITY_POINTS, bandToVerdict, maxScoreCap } from './score';
+import { SEVERITY_POINTS, bandToVerdict, maxScoreCap, MAX_OFFSET } from './score';
 import { buildSummary } from './explanations';
 import { extractBenefits } from '@/lib/organs/evaluate';
 
@@ -12,6 +12,7 @@ const MAX_REASONS = 5;
 export function evaluate(product: Product, profile: Profile): VerdictResult {
   const signals = extractSignals(product);
   let score = 100;
+  let bonus = 0;
   const triggeredRuleIds: string[] = [];
   const negReasons: Reason[] = [];
   const posReasons: Reason[] = [];
@@ -26,10 +27,11 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
     const hit = rule.build(signals, product);
     if (hit.reason) (hit.reason.kind === 'pos' ? posReasons : negReasons).push(hit.reason);
     if (hit.flag) flags.push(hit.flag);
+    if (rule.severity === 'pos' && hit.bonus) bonus += hit.bonus;
   }
 
   const cap = maxScoreCap(signals, product);
-  score = Math.max(0, Math.min(cap, score));
+  score = Math.max(0, Math.min(cap, score + Math.min(bonus, MAX_OFFSET)));
   const verdict = bandToVerdict(score);
   const reasons = [...negReasons, ...posReasons].slice(0, MAX_REASONS);
   const summary = buildSummary(triggeredRuleIds, signals, product);

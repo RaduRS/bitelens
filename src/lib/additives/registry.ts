@@ -8,6 +8,9 @@ const RAW_REGISTRY: Record<string, Omit<Additive, 'code'>> = {
   // ── Acidulants & emulsifiers ─────────────────────────────────
   E338:  { name: 'Phosphoric acid',          risk: 'moderate', detail: 'Strong acidity associated with enamel erosion and reduced calcium absorption.' },
   E322:  { name: 'Soy lecithin', risk: 'low', detail: 'Common emulsifier derived from soy. Generally recognized as safe.' },
+  E433:  { name: 'Polysorbate 80', risk: 'moderate', detail: 'Synthetic emulsifier. Animal and in-vitro human-microbiota studies link it to gut inflammation and altered microbiota.' },
+  E466:  { name: 'Carboxymethylcellulose (CMC)', risk: 'moderate', detail: 'Synthetic emulsifier. Linked in studies to reduced microbial diversity and low-grade gut inflammation.' },
+  E407:  { name: 'Carrageenan', risk: 'moderate', detail: 'Seaweed-derived thickener/emulsifier. Degraded forms show intestinal-inflammation signals; flagged by clean-label apps.' },
 
   // ── Modified starches & gelling agents ───────────────────────
   E1442: { name: 'Hydroxypropyl distarch phosphate', risk: 'low', detail: 'Modified starch used as a thickener. Generally safe but indicates ultra-processing.' },

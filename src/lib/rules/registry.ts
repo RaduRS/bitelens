@@ -6,6 +6,7 @@ import type { SignalSet } from './signals';
 export interface RuleHit {
   reason?: Reason;
   flag?: Flag;
+  bonus?: number;   // positive offset points (only meaningful on severity 'pos')
 }
 
 export interface Rule {
@@ -18,6 +19,36 @@ export interface Rule {
 const UPF_CATEGORIES: FoodCategory[] = [
   'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
 ];
+
+// Nut/seed-based foods (salted almonds, trail mix, seed bars) are calorie- and
+// fat-dense, but from protective unsaturated sources — the same reason whole
+// foods are exempt. Don't hit them with the energy-density or total-fat
+// penalties; their salt/additive/processing concerns still score normally.
+const NUT_SEED_PATTERNS = [
+  'almond', 'cashew', 'walnut', 'pecan', 'hazelnut', 'pistachio', 'macadamia',
+  'peanut', 'brazil nut', 'pine nut', 'sunflower seed', 'pumpkin seed',
+  'chia seed', 'flax', 'sesame', 'hemp seed',
+];
+function isNutSeedBased(s: SignalSet): boolean {
+  // Require it as the FIRST ingredient so a trace topping doesn't grant the
+  // exemption to an otherwise-junk product.
+  const first = s.ingredientsLower[0] ?? '';
+  return NUT_SEED_PATTERNS.some(p => first.includes(p));
+}
+
+// True when the food's energy/fat should not be penalised: whole foods and
+// nut/seed-based foods carry their density in protective forms.
+function fatEnergyExempt(s: SignalSet): boolean {
+  return s.category === 'whole_food' || isNutSeedBased(s);
+}
+
+// Positive offsets must never rescue ultra-processed food. Eligible only when
+// the product is NOT a UPF category, NOT a packaged snack, and NOT NOVA 4.
+function offsetEligible(s: SignalSet): boolean {
+  if (s.category && UPF_CATEGORIES.includes(s.category)) return false;
+  if (s.category === 'snack') return false;
+  return s.novaGroup == null || s.novaGroup <= 3;
+}
 
 export const RULES: Rule[] = [
   // ── Category-driven UPF penalties (strongest signal we have for photos) ──
@@ -59,6 +90,15 @@ export const RULES: Rule[] = [
     build: () => ({
       reason: { kind: 'neg', text: 'Processed meat — IARC Group 1 carcinogen for colorectal cancer' },
       flag:   { tone: 'avoid', label: 'Processed meat', detail: 'IARC 1' },
+    }),
+  },
+  {
+    id: 'category_snack',
+    severity: 'moderate',
+    when: s => s.category === 'snack',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Packaged savoury snack — ultra-processed, salt/fat dense' },
+      flag:   { tone: 'caution', label: 'Packaged snack' },
     }),
   },
 
@@ -126,57 +166,148 @@ export const RULES: Rule[] = [
     }),
   },
 
-  // ── Sodium (graduated) ────────────────────────────────────────
-  // Naturally-occurring sodium in unprocessed whole foods (raw shellfish, plain
-  // celery, eggs) is not the harm target — sodium guidelines target ADDED salt
-  // in processed food. Same exemption pattern as sugar.
+  // ── Sodium (graduated, per 100g/100ml — FSA traffic-light basis) ──
+  // Salt is a CONCENTRATION harm, so we score it per 100g, not per serving:
+  // crisps used to dodge every tier because a 30g serving keeps the per-serving
+  // number low even though the food is salt-dense. FSA thresholds (per 100g):
+  // >1.5g salt (600mg sodium) = red, 0.3–1.5g salt (120–600mg) = amber.
+  // Naturally-occurring sodium in whole foods (shellfish, celery, eggs) is not
+  // the harm target — sodium guidelines target ADDED salt in processed food.
+  // `sodiumPer100g === null` (no serving weight) → skip; we don't guess.
   {
     id: 'sodium_severe',
     severity: 'severe',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 1000,
     build: s => ({
-      reason: { kind: 'neg', text: `Excessive sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'avoid', label: 'Excessive sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `Excessive salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'avoid', label: 'Excessive salt', detail: `${s.sodiumPer100g}mg/100g` },
     }),
   },
   {
     id: 'sodium_high',
     severity: 'high',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 800 && s.sodiumPerServing < 1500,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 600 && s.sodiumPer100g < 1000,
     build: s => ({
-      reason: { kind: 'neg', text: `High sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'avoid', label: 'High sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `High salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'avoid', label: 'High salt', detail: `${s.sodiumPer100g}mg/100g` },
     }),
   },
   {
     id: 'sodium_moderate',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.sodiumPerServing >= 500 && s.sodiumPerServing < 800,
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 300 && s.sodiumPer100g < 600,
     build: s => ({
-      reason: { kind: 'neg', text: `Moderate sodium — ${s.sodiumPerServing}mg per serving` },
-      flag:   { tone: 'caution', label: 'Sodium', detail: `${s.sodiumPerServing}mg` },
+      reason: { kind: 'neg', text: `Moderate salt — ${s.sodiumPer100g}mg sodium per 100g` },
+      flag:   { tone: 'caution', label: 'Salt', detail: `${s.sodiumPer100g}mg/100g` },
+    }),
+  },
+  {
+    id: 'sodium_mild',
+    severity: 'low',
+    when: s => s.category !== 'whole_food' && s.sodiumPer100g != null && s.sodiumPer100g >= 120 && s.sodiumPer100g < 300,
+    build: s => ({
+      reason: { kind: 'neg', text: `Some added salt — ${s.sodiumPer100g}mg sodium per 100g` },
     }),
   },
 
-  // ── Saturated fat (graduated) ─────────────────────────────────
-  // Whole-food saturated fat (avocado, coconut, plain meat, whole eggs, full-fat
-  // dairy) sits inside a complex nutrient matrix and is not equivalent to
-  // industrial sat-fat from hydrogenated oils. Exempt the same way as sugar/sodium.
+  // ── Saturated fat (graduated, per 100g — FSA traffic-light basis) ──
+  // Same concentration logic as salt. FSA thresholds (per 100g): >5g = red,
+  // 1.5–5g = amber. Whole-food saturated fat (avocado, coconut, plain meat,
+  // full-fat dairy) sits in a complex nutrient matrix and is not equivalent to
+  // industrial sat-fat — exempt the same way. Skip when density is unknown.
   {
     id: 'satfat_high',
     severity: 'high',
-    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 8,
+    when: s => s.category !== 'whole_food' && s.satFatPer100g != null && s.satFatPer100g >= 5,
     build: s => ({
-      reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPerServing}g per serving` },
-      flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPerServing}g` },
+      reason: { kind: 'neg', text: `High saturated fat — ${s.satFatPer100g}g per 100g` },
+      flag:   { tone: 'avoid', label: 'Sat. fat', detail: `${s.satFatPer100g}g/100g` },
     }),
   },
   {
     id: 'satfat_moderate',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.satFatPerServing >= 5 && s.satFatPerServing < 8,
+    when: s => s.category !== 'whole_food' && s.satFatPer100g != null && s.satFatPer100g >= 3 && s.satFatPer100g < 5,
     build: s => ({
-      reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPerServing}g per serving` },
+      reason: { kind: 'neg', text: `Moderate saturated fat — ${s.satFatPer100g}g per 100g` },
+    }),
+  },
+
+  // ── Energy density (per 100g — Nutri-Score/FSA basis) ──────────
+  // Calorie-dense formulated foods (chocolate, biscuits, crisps) carry risk
+  // independent of any single nutrient. Whole foods (nuts, avocado, oily fish,
+  // olive oil) are energy-dense but protective — exempt them. Skip when null.
+  {
+    id: 'energy_high',
+    severity: 'high',
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 550,
+    build: s => ({
+      reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
+      flag:   { tone: 'avoid', label: 'Calorie-dense', detail: `${s.energyPer100g}kcal/100g` },
+    }),
+  },
+  {
+    id: 'energy_moderate',
+    severity: 'moderate',
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 450 && s.energyPer100g < 550,
+    build: s => ({
+      reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
+    }),
+  },
+  {
+    id: 'energy_mild',
+    severity: 'low',
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 350 && s.energyPer100g < 450,
+    build: s => ({
+      reason: { kind: 'neg', text: `Fairly calorie-dense — ${s.energyPer100g} kcal per 100g` },
+    }),
+  },
+
+  // ── Trans fat (the single most harmful fat — WHO ban target) ───
+  {
+    id: 'trans_fat_ingredient',
+    severity: 'severe',
+    when: s => containsAny(s.ingredientsLower, TRANS_FAT_PATTERNS),
+    build: () => ({
+      reason: { kind: 'neg', text: 'Contains partially hydrogenated oil — industrial trans fat' },
+      flag:   { tone: 'avoid', label: 'Trans fat', detail: 'Hydrogenated oil' },
+    }),
+  },
+  {
+    id: 'trans_fat_high',
+    severity: 'severe',
+    when: s => s.transFatPer100g != null && s.transFatPer100g >= 1,
+    build: s => ({
+      reason: { kind: 'neg', text: `High industrial trans fat — ${s.transFatPer100g}g per 100g` },
+      flag:   { tone: 'avoid', label: 'Trans fat', detail: `${s.transFatPer100g}g/100g` },
+    }),
+  },
+  {
+    id: 'trans_fat_present',
+    severity: 'high',
+    when: s => s.transFatPer100g != null && s.transFatPer100g >= 0.2 && s.transFatPer100g < 1,
+    build: s => ({
+      reason: { kind: 'neg', text: `Trans fat present — ${s.transFatPer100g}g per 100g` },
+    }),
+  },
+
+  // ── Total fat (FSA traffic-light basis, per 100g) ──────────────
+  // Modest so it doesn't double-crush with sat-fat/energy. FSA red >17.5g/100g.
+  {
+    id: 'total_fat_high',
+    severity: 'moderate',
+    when: s => !fatEnergyExempt(s) && s.totalFatPer100g != null && s.totalFatPer100g >= 17.5,
+    build: s => ({
+      reason: { kind: 'neg', text: `High total fat — ${s.totalFatPer100g}g per 100g` },
+      flag:   { tone: 'caution', label: 'High fat', detail: `${s.totalFatPer100g}g/100g` },
+    }),
+  },
+  {
+    id: 'total_fat_moderate',
+    severity: 'low',
+    when: s => !fatEnergyExempt(s) && s.totalFatPer100g != null && s.totalFatPer100g >= 8 && s.totalFatPer100g < 17.5,
+    build: s => ({
+      reason: { kind: 'neg', text: `Moderate total fat — ${s.totalFatPer100g}g per 100g` },
     }),
   },
 
@@ -393,14 +524,30 @@ export const RULES: Rule[] = [
   {
     id: 'pos_high_protein',
     severity: 'pos',
-    when: s => s.proteinPerServing >= 10,
-    build: s => ({ reason: { kind: 'pos', text: `Good protein content (${s.proteinPerServing}g)` } }),
+    when: s => offsetEligible(s) && s.proteinPer100g != null && s.proteinPer100g >= 8,
+    build: s => ({
+      reason: { kind: 'pos', text: `Good protein (${s.proteinPer100g}g/100g)` },
+      bonus: s.proteinPer100g != null && s.proteinPer100g >= 16 ? 8 : 4,
+    }),
   },
   {
     id: 'pos_high_fiber',
     severity: 'pos',
-    when: s => s.fiberPerServing >= 5,
-    build: s => ({ reason: { kind: 'pos', text: `Good fiber (${s.fiberPerServing}g)` } }),
+    when: s => offsetEligible(s) && s.fiberPer100g != null && s.fiberPer100g >= 3,
+    build: s => ({
+      reason: { kind: 'pos', text: `Good fibre (${s.fiberPer100g}g/100g)` },
+      bonus: s.fiberPer100g != null && s.fiberPer100g >= 6 ? 8 : 4,
+    }),
+  },
+  {
+    id: 'pos_fvl_content',
+    severity: 'pos',
+    when: s => offsetEligible(s) && s.fvlPercent != null && s.fvlPercent >= 40,
+    build: s => ({
+      reason: { kind: 'pos', text: `${Math.round(s.fvlPercent!)}% fruit/veg/legume/nut` },
+      flag:   { tone: 'good', label: 'Plant-rich' },
+      bonus: s.fvlPercent! >= 80 ? 10 : s.fvlPercent! >= 60 ? 6 : 3,
+    }),
   },
   {
     id: 'pos_nutri_a_b',
@@ -411,7 +558,7 @@ export const RULES: Rule[] = [
   {
     id: 'pos_low_sugar',
     severity: 'pos',
-    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0 && !(s.category && UPF_CATEGORIES.includes(s.category)),
+    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0 && s.category !== 'snack' && !(s.category && UPF_CATEGORIES.includes(s.category)),
     build: () => ({ reason: { kind: 'pos', text: 'Low sugar' } }),
   },
 ];
@@ -473,6 +620,14 @@ const UPF_INGREDIENT_PATTERNS = [
   'microcrystalline cellulose', 'cellulose gum',
   'hydrolyzed protein', 'hydrolysed protein', 'autolyzed yeast extract',
   'high-oleic sunflower oil', 'high oleic sunflower oil',
+];
+
+// Industrial trans fat markers. WHO best practice is a total ban on PHOs.
+const TRANS_FAT_PATTERNS = [
+  'partially hydrogenated', 'partly hydrogenated',
+  'hydrogenated vegetable oil', 'hydrogenated palm', 'hydrogenated soybean',
+  'huile partiellement hydrogénée', 'aceite parcialmente hidrogenado',
+  'teilweise gehärtet', 'teilgehärtet',
 ];
 
 function containsAny(ingredientsLower: string[], patterns: string[]): boolean {

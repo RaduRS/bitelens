@@ -2,7 +2,6 @@ import type { SignalSet } from './signals';
 import type { Product } from '@/types/product';
 
 const HIGH_SUGAR_IDS = ['sugar_severe', 'sugar_high'];
-const ANY_SUGAR_IDS = [...HIGH_SUGAR_IDS, 'sugar_moderate'];
 
 function any(triggered: string[], ids: readonly string[]): boolean {
   return ids.some(id => triggered.includes(id));
@@ -26,6 +25,13 @@ const NEG_PHRASE: Record<string, string> = {
   sodium_moderate:                'moderate sodium',
   satfat_high:                    'high saturated fat',
   satfat_moderate:                'moderate saturated fat',
+  trans_fat_ingredient:           'industrial trans fat',
+  trans_fat_high:                 'high trans fat',
+  trans_fat_present:              'trans fat present',
+  energy_high:                    'very calorie-dense',
+  energy_moderate:                'calorie-dense',
+  total_fat_high:                 'high total fat',
+  category_snack:                 'ultra-processed packaged snack',
   refined_sugar_ingredient:       'refined sugars in the ingredients',
   upf_ingredient_marker:          'industrial ingredients',
   additive_high_risk:             'a high-risk additive',
@@ -53,6 +59,7 @@ const POS_PHRASE: Record<string, string> = {
   pos_high_fiber:        'good fiber',
   pos_low_sugar:         'low sugar',
   pos_no_additives:      'no additives',
+  pos_fvl_content:       'plant-rich (fruit/veg/legume/nut)',
 };
 
 // "What's the dominant concern" priority. Carcinogen and category-driven UPF
@@ -61,12 +68,16 @@ const POS_PHRASE: Record<string, string> = {
 const NEG_PRIORITY: string[] = [
   'category_processed_meat',
   'additive_high_risk',
+  'trans_fat_ingredient',
+  'trans_fat_high',
   'category_candy',
   'category_fast_food',
   'category_dessert',
+  'category_snack',
   'sugar_severe',
   'sodium_severe',
   'satfat_high',
+  'energy_high',
   'sugar_high',
   'sodium_high',
   'sugar_density_severe',
@@ -75,7 +86,10 @@ const NEG_PRIORITY: string[] = [
   'ultra_processed',
   'sugar_moderate',
   'sodium_moderate',
+  'total_fat_high',
   'satfat_moderate',
+  'energy_moderate',
+  'trans_fat_present',
   'additive_moderate_risk',
   'sugar_density_high',
   'upf_ingredient_marker',
@@ -96,6 +110,7 @@ const NEG_PRIORITY: string[] = [
 const POS_PRIORITY: string[] = [
   'pos_organic_certified',
   'pos_whole_food',
+  'pos_fvl_content',
   'pos_nutri_a_b',
   'pos_high_protein',
   'pos_high_fiber',
@@ -148,11 +163,14 @@ export function buildSummary(triggered: string[], s: SignalSet, p: Product): str
   if (triggered.includes('additive_high_risk')) {
     return 'Contains a high-risk additive.';
   }
+  if (triggered.includes('trans_fat_ingredient') || triggered.includes('trans_fat_high')) {
+    return 'Contains industrial trans fat — the most harmful fat for the heart.';
+  }
   if (triggered.includes('sodium_severe') || triggered.includes('sodium_high')) {
-    return `High sodium — ${s.sodiumPerServing}mg per serving.`;
+    return `High salt — ${s.sodiumPer100g}mg sodium per 100g.`;
   }
   if (triggered.includes('satfat_high')) {
-    return `High saturated fat — ${s.satFatPerServing}g per serving.`;
+    return `High saturated fat — ${s.satFatPer100g}g per 100g.`;
   }
   if (any(triggered, HIGH_SUGAR_IDS)) {
     const word = triggered.includes('sugar_severe') ? 'Excessive' : 'High';
@@ -165,6 +183,9 @@ export function buildSummary(triggered: string[], s: SignalSet, p: Product): str
   // ── Mid-range concerns that previously fell through to the catch-all. ──
   if (triggered.includes('sugar_moderate')) {
     return `Sweeter than ideal — ${s.sugarPerServing}g sugar per serving.`;
+  }
+  if (triggered.includes('sodium_moderate')) {
+    return `Salt-forward — ${s.sodiumPer100g}mg sodium per 100g.`;
   }
   if (triggered.includes('refined_sugar_ingredient')) {
     return 'Contains refined sugars (syrups, HFCS).';
