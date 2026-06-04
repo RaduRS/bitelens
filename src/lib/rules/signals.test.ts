@@ -42,6 +42,26 @@ describe('extractSignals', () => {
     expect(s.satFatPer100g).toBeCloseTo(5, 0);
   });
 
+  it('derives energy/total-fat/fibre/protein per 100g and passes fvlPercent through', () => {
+    const stew = {
+      id: 'x', type: 'barcode' as const, brand: 'Hearth', name: 'Lentil Stew',
+      subtitle: '400g', swatch: '#000', glyph: 'L',
+      ingredients: ['Lentils', 'Tomato', 'Onion'], allergens: [], additives: [],
+      nutrition: {
+        serving: '200g', servingGrams: 200, kcal: 180, protein: 12, carbs: 22,
+        sugar: 3, fat: 4, satFat: 0.6, fiber: 8, sodium: 240, fvlPercent: 75,
+      },
+      nutriScore: 'A' as const, ecoScore: null, novaGroup: 3 as const, category: 'meal' as const,
+    };
+    const s = extractSignals(stew);
+    expect(s.energyPer100g).toBe(90);       // 180 / 200 * 100
+    expect(s.totalFatPer100g).toBe(2);      // 4 / 200 * 100
+    expect(s.fiberPer100g).toBe(4);         // 8 / 200 * 100
+    expect(s.proteinPer100g).toBe(6);       // 12 / 200 * 100
+    expect(s.fvlPercent).toBe(75);
+    expect(s.transFatPer100g).toBeNull();   // no trans-fat data
+  });
+
   it('leaves per-100g density null when no serving weight is known', () => {
     const photo = {
       id: 'p', type: 'photo' as const, brand: '', name: 'Mystery plate',

@@ -15,6 +15,12 @@ export interface SignalSet {
   // a tiny serving size. null = no reliable serving weight, so we don't guess.
   sodiumPer100g: number | null;
   satFatPer100g: number | null;
+  energyPer100g: number | null;
+  totalFatPer100g: number | null;
+  transFatPer100g: number | null;
+  fiberPer100g: number | null;
+  proteinPer100g: number | null;
+  fvlPercent: number | null;   // 0–100 fruit/veg/legume/nut share
   additiveMaxRisk: AdditiveRisk;
   additiveCount: number;
   nutriScore: NutriScoreGrade | null;
@@ -73,6 +79,16 @@ export function extractSignals(p: Product): SignalSet {
     sugarShareOfKcal,
     sodiumPer100g: per100(p.nutrition.sodium, p.nutrition.per100?.sodium, grams),
     satFatPer100g: per100(p.nutrition.satFat, p.nutrition.per100?.satFat, grams),
+    energyPer100g: per100(p.nutrition.kcal, p.nutrition.per100?.kcal, grams),
+    totalFatPer100g: per100(p.nutrition.fat, p.nutrition.per100?.fat, grams),
+    transFatPer100g: per100(
+      p.nutrition.transFat ?? 0,
+      p.nutrition.per100?.transFat,
+      p.nutrition.transFat == null && p.nutrition.per100?.transFat == null ? null : grams,
+    ),
+    fiberPer100g: per100(p.nutrition.fiber, p.nutrition.per100?.fiber, grams),
+    proteinPer100g: per100(p.nutrition.protein, p.nutrition.per100?.protein, grams),
+    fvlPercent: typeof p.nutrition.fvlPercent === 'number' ? p.nutrition.fvlPercent : null,
     additiveMaxRisk,
     additiveCount: p.additives.length,
     nutriScore: p.nutriScore,
