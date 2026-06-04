@@ -8,8 +8,9 @@ describe('responseToProduct', () => {
     allergens: ['fish' as const, 'sesame' as const],
     nutrition: {
       servingGrams: 350, kcal: 519.7, protein: 28.04, carbs: 47.6, sugar: 6.13,
-      fat: 22.21, satFat: 4.05, fiber: 9.24, sodium: 480.4,
+      fat: 22.21, satFat: 4.05, fiber: 9.24, sodium: 480.4, transFat: 0,
     },
+    fvlPercent: 0,
     category: 'meal' as const,
     processing: 1 as const,
     flaggedIngredients: [],
@@ -52,6 +53,16 @@ describe('responseToProduct', () => {
     expect(p.nutrition.servingGrams).toBeUndefined();
   });
 
+  it('passes transFat and fvlPercent through from the model', () => {
+    const p = responseToProduct({
+      ...sample,
+      nutrition: { ...sample.nutrition, transFat: 0.3 },
+      fvlPercent: 65,
+    });
+    expect(p.nutrition.transFat).toBe(0.3);
+    expect(p.nutrition.fvlPercent).toBe(65);
+  });
+
   it('clamps confidence outside [0, 1]', () => {
     expect(responseToProduct({ ...sample, confidence: 1.4 }).confidence).toBe(1);
     expect(responseToProduct({ ...sample, confidence: -0.2 }).confidence).toBe(0);
@@ -85,7 +96,7 @@ describe('responseToProduct', () => {
       category: 'whole_food',
       processing: 1,
       flaggedIngredients: [],
-      nutrition: { servingGrams: 21, kcal: 64, protein: 0, carbs: 17, sugar: 17, fat: 0, satFat: 0, fiber: 0, sodium: 1 },
+      nutrition: { servingGrams: 21, kcal: 64, protein: 0, carbs: 17, sugar: 17, fat: 0, satFat: 0, fiber: 0, sodium: 1, transFat: 0 },
     });
     expect(p.category).toBe('dessert');
     expect(p.novaGroup).toBe(4);
@@ -107,7 +118,7 @@ describe('responseToProduct', () => {
   it('clamps absurd nutrition values from AI hallucinations', () => {
     const p = responseToProduct({
       ...sample,
-      nutrition: { servingGrams: 0, kcal: -100, protein: 9999, carbs: 3, sugar: NaN, fat: 22, satFat: 4, fiber: 9, sodium: -50 },
+      nutrition: { servingGrams: 0, kcal: -100, protein: 9999, carbs: 3, sugar: NaN, fat: 22, satFat: 4, fiber: 9, sodium: -50, transFat: 0 },
     });
     expect(p.nutrition.kcal).toBe(0);
     expect(p.nutrition.protein).toBe(500);

@@ -13,6 +13,7 @@ CONFIDENCE: <0.4 blurry/ambiguous, 0.4-0.7 partially obscured, >0.7 clearly iden
 
 NUTRITION: realistic typical values for the visible portion. For packaged products (a bag of candy, a can of soda), use a typical single-serving size (e.g. ~25g for gummy sweets, 330ml for a soda can) — not the whole pack — and reflect that the per-serving sugar/sodium for these products is high.
 SERVING WEIGHT: also estimate servingGrams — the net weight in grams (or ml for drinks) of that single serving you costed the nutrition against (e.g. 25 for a handful of gummies, 30 for a portion of crisps, 330 for a soda can). This anchors the per-100g salt/fat assessment, so be realistic. If you genuinely cannot tell, return 0.
+TRANS FAT: estimate transFat grams per serving — almost always 0 for modern products; only non-zero if you see "partially hydrogenated" oils. FVL: estimate fvlPercent (0–100) — the share of the item that is whole fruit, vegetable, legume, or nut (0 for sweets/drinks/refined snacks).
 
 CATEGORY: pick the closest tag.
   - whole_food: single-ingredient, minimally-prepared natural food (apple, banana, raw nuts in or out of shell, walnut halves, almonds, raw vegetables, plain raw meat/fish, eggs, plain milk). Use this for ANY identifiable whole food — even if it's served in a bowl, plate, or open bag — as long as it's the food itself with no added oil/salt/sugar/coating visible.
@@ -44,7 +45,8 @@ const USER_PROMPT = `Analyze this food photo. Return:
 - name: one-line product/meal name, properly capitalized (e.g. "Grain bowl with salmon", "Haribo Starmix gummies", "Coca-Cola can")
 - components: 3-8 visible foods/ingredients
 - allergens: subset of [gluten, dairy, eggs, nuts, peanuts, soy, fish, shellfish, sesame]
-- nutrition (per realistic single serving): servingGrams (net weight g/ml of that serving, 0 if unknown), kcal, protein g, carbs g, sugar g, fat g, satFat g, fiber g, sodium mg
+- nutrition (per realistic single serving): servingGrams (net weight g/ml of that serving, 0 if unknown), kcal, protein g, carbs g, sugar g, fat g, satFat g, fiber g, sodium mg, transFat g (usually 0)
+- fvlPercent: 0–100, share that is whole fruit/veg/legume/nut (0 if none)
 - category: one of [meal, whole_food, snack, beverage, dessert, candy, fast_food, baked_good, fried_food, processed_meat]
 - processing: 1-4 NOVA group
 - flaggedIngredients: array of E-number codes (e.g. ["E150d","E338"]) — empty if none confidently inferable
@@ -56,7 +58,7 @@ const JSON_SCHEMA = {
   schema: {
     type: 'object',
     additionalProperties: false,
-    required: ['name', 'components', 'allergens', 'nutrition', 'category', 'processing', 'flaggedIngredients', 'confidence'],
+    required: ['name', 'components', 'allergens', 'nutrition', 'fvlPercent', 'category', 'processing', 'flaggedIngredients', 'confidence'],
     properties: {
       name: { type: 'string' },
       components: { type: 'array', items: { type: 'string' } },
@@ -67,7 +69,7 @@ const JSON_SCHEMA = {
       nutrition: {
         type: 'object',
         additionalProperties: false,
-        required: ['servingGrams', 'kcal', 'protein', 'carbs', 'sugar', 'fat', 'satFat', 'fiber', 'sodium'],
+        required: ['servingGrams', 'kcal', 'protein', 'carbs', 'sugar', 'fat', 'satFat', 'fiber', 'sodium', 'transFat'],
         properties: {
           servingGrams: { type: 'number' },
           kcal: { type: 'number' },
@@ -78,8 +80,10 @@ const JSON_SCHEMA = {
           satFat: { type: 'number' },
           fiber: { type: 'number' },
           sodium: { type: 'number' },
+          transFat: { type: 'number' },
         },
       },
+      fvlPercent: { type: 'number' },
       category: { type: 'string', enum: CATEGORY_ENUM },
       processing: { type: 'integer', enum: [1, 2, 3, 4] },
       flaggedIngredients: { type: 'array', items: { type: 'string' } },

@@ -27,7 +27,9 @@ export interface AnalysisResponse {
     satFat: number;
     fiber: number;
     sodium: number;
+    transFat: number;
   };
+  fvlPercent: number;
   category: FoodCategory;
   processing: 1 | 2 | 3 | 4;
   flaggedIngredients: string[];
@@ -104,6 +106,7 @@ function sanitizeNutrition(n: AnalysisResponse['nutrition']): AnalysisResponse['
     satFat:  clampGrams(n.satFat),
     fiber:   clampGrams(n.fiber),
     sodium:  Math.max(0, Math.min(20_000, Number.isFinite(n.sodium) ? n.sodium : 0)),
+    transFat: clampGrams(n.transFat),
   };
 }
 
@@ -138,6 +141,9 @@ export function responseToProduct(r: AnalysisResponse): Product {
       satFat: round(nutrition.satFat),
       fiber: round(nutrition.fiber),
       sodium: round(nutrition.sodium),
+      transFat: nutrition.transFat > 0 ? round(nutrition.transFat) : undefined,
+      fvlPercent: typeof r.fvlPercent === 'number' && Number.isFinite(r.fvlPercent)
+        ? Math.max(0, Math.min(100, Math.round(r.fvlPercent))) : undefined,
     },
     nutriScore: null,
     ecoScore: null,
