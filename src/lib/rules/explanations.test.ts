@@ -57,6 +57,17 @@ describe('summary text', () => {
     expect(r.summary).toMatch(/fast food/i);
   });
 
+  it('names trans fat as the dominant concern when present', () => {
+    const spread = baseBarcode({
+      name: 'Old Spread',
+      ingredients: ['Partially hydrogenated vegetable oil', 'Water'],
+      nutrition: { serving: '10g', servingGrams: 10, kcal: 72, protein: 0, carbs: 0, sugar: 0, fat: 8, satFat: 2, fiber: 0, sodium: 80 },
+      novaGroup: 4,
+    });
+    const r = evaluate(spread, DEFAULT_PROFILE);
+    expect(r.summary).toMatch(/trans fat/i);
+  });
+
   it('high-salt product names salt on a per-100g basis instead of the generic line', () => {
     const broth = baseBarcode({
       name: 'Salty broth',
