@@ -28,7 +28,8 @@ export function maxScoreCap(s: SignalSet, p: Product): number {
     let cap: number;
     if (s.category && UPF_CATEGORIES.includes(s.category)) cap = 45;
     else if (s.novaGroup === 4) cap = 50;
-    else if (s.category === 'beverage' || s.category === 'snack') cap = 65;
+    else if (s.category === 'beverage') cap = 65;
+    else if (s.category === 'snack') cap = 55;
     else if (s.novaGroup === 3) cap = 70;
     // Whole foods (fresh fruit, vegetables, raw nuts, plain meat) are the safest
     // possible AI classification: NOVA 1 by force, additives stripped by force,
@@ -42,6 +43,9 @@ export function maxScoreCap(s: SignalSet, p: Product): number {
     if ((p.confidence ?? 1) < 0.4) cap = Math.min(cap, 60);
     return cap;
   }
+  // Packaged savoury snacks (crisps/crackers/popcorn) are ultra-processed by
+  // nature — cap them below the Good band on the barcode path too.
+  if (s.category === 'snack') return 55;
   const missingNutri = s.nutriScore == null;
   const missingNova = s.novaGroup == null;
   if (missingNutri && missingNova) return 80;

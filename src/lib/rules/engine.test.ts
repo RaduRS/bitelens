@@ -346,6 +346,20 @@ describe('evaluate', () => {
     expect(evaluate(avocado, DEFAULT_PROFILE).triggeredRuleIds).not.toContain('total_fat_high');
   });
 
+  it('treats snack as a capped processed category with no green low-sugar flag', () => {
+    const crackers: Product = {
+      id: 'p_crackers', type: 'barcode', brand: 'Crackly', name: 'Cream Crackers',
+      subtitle: '25g', swatch: '#000', glyph: 'C',
+      ingredients: ['Wheat flour', 'Vegetable oil', 'Salt'], allergens: ['gluten'], additives: [],
+      nutrition: { serving: '25g', servingGrams: 25, kcal: 110, protein: 2, carbs: 18, sugar: 1, fat: 3, satFat: 1, fiber: 1, sodium: 120 },
+      nutriScore: 'C', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(crackers, DEFAULT_PROFILE);
+    expect(r.triggeredRuleIds).toContain('category_snack');
+    expect(r.triggeredRuleIds).not.toContain('pos_low_sugar');
+    expect(r.score).toBeLessThanOrEqual(55);
+  });
+
   it('processed-meat photo flags the IARC Group 1 carcinogen risk', () => {
     const baconPhoto: Product = {
       id: 'photo_bacon', type: 'photo', brand: '', name: 'Bacon strips',

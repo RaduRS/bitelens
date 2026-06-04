@@ -61,6 +61,15 @@ export const RULES: Rule[] = [
       flag:   { tone: 'avoid', label: 'Processed meat', detail: 'IARC 1' },
     }),
   },
+  {
+    id: 'category_snack',
+    severity: 'moderate',
+    when: s => s.category === 'snack',
+    build: () => ({
+      reason: { kind: 'neg', text: 'Packaged savoury snack — ultra-processed, salt/fat dense' },
+      flag:   { tone: 'caution', label: 'Packaged snack' },
+    }),
+  },
 
   // ── Sugar (graduated, per serving) ────────────────────────────
   // Sugar penalties target FREE sugars (added/refined). WHO and AHA exclude
@@ -502,7 +511,7 @@ export const RULES: Rule[] = [
   {
     id: 'pos_low_sugar',
     severity: 'pos',
-    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0 && !(s.category && UPF_CATEGORIES.includes(s.category)),
+    when: s => s.sugarPerServing < 5 && s.kcalPerServing > 0 && s.category !== 'snack' && !(s.category && UPF_CATEGORIES.includes(s.category)),
     build: () => ({ reason: { kind: 'pos', text: 'Low sugar' } }),
   },
 ];
