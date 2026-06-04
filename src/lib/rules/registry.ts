@@ -20,6 +20,28 @@ const UPF_CATEGORIES: FoodCategory[] = [
   'candy', 'dessert', 'fast_food', 'baked_good', 'fried_food', 'processed_meat',
 ];
 
+// Nut/seed-based foods (salted almonds, trail mix, seed bars) are calorie- and
+// fat-dense, but from protective unsaturated sources — the same reason whole
+// foods are exempt. Don't hit them with the energy-density or total-fat
+// penalties; their salt/additive/processing concerns still score normally.
+const NUT_SEED_PATTERNS = [
+  'almond', 'cashew', 'walnut', 'pecan', 'hazelnut', 'pistachio', 'macadamia',
+  'peanut', 'brazil nut', 'pine nut', 'sunflower seed', 'pumpkin seed',
+  'chia seed', 'flax', 'sesame', 'hemp seed',
+];
+function isNutSeedBased(s: SignalSet): boolean {
+  // Require it as the FIRST ingredient so a trace topping doesn't grant the
+  // exemption to an otherwise-junk product.
+  const first = s.ingredientsLower[0] ?? '';
+  return NUT_SEED_PATTERNS.some(p => first.includes(p));
+}
+
+// True when the food's energy/fat should not be penalised: whole foods and
+// nut/seed-based foods carry their density in protective forms.
+function fatEnergyExempt(s: SignalSet): boolean {
+  return s.category === 'whole_food' || isNutSeedBased(s);
+}
+
 // Positive offsets must never rescue ultra-processed food. Eligible only when
 // the product is NOT a UPF category, NOT a packaged snack, and NOT NOVA 4.
 function offsetEligible(s: SignalSet): boolean {
@@ -218,7 +240,7 @@ export const RULES: Rule[] = [
   {
     id: 'energy_high',
     severity: 'high',
-    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 550,
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 550,
     build: s => ({
       reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
       flag:   { tone: 'avoid', label: 'Calorie-dense', detail: `${s.energyPer100g}kcal/100g` },
@@ -227,7 +249,7 @@ export const RULES: Rule[] = [
   {
     id: 'energy_moderate',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 450 && s.energyPer100g < 550,
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 450 && s.energyPer100g < 550,
     build: s => ({
       reason: { kind: 'neg', text: `Calorie-dense — ${s.energyPer100g} kcal per 100g` },
     }),
@@ -235,7 +257,7 @@ export const RULES: Rule[] = [
   {
     id: 'energy_mild',
     severity: 'low',
-    when: s => s.category !== 'whole_food' && s.energyPer100g != null && s.energyPer100g >= 350 && s.energyPer100g < 450,
+    when: s => !fatEnergyExempt(s) && s.energyPer100g != null && s.energyPer100g >= 350 && s.energyPer100g < 450,
     build: s => ({
       reason: { kind: 'neg', text: `Fairly calorie-dense — ${s.energyPer100g} kcal per 100g` },
     }),
@@ -274,7 +296,7 @@ export const RULES: Rule[] = [
   {
     id: 'total_fat_high',
     severity: 'moderate',
-    when: s => s.category !== 'whole_food' && s.totalFatPer100g != null && s.totalFatPer100g >= 17.5,
+    when: s => !fatEnergyExempt(s) && s.totalFatPer100g != null && s.totalFatPer100g >= 17.5,
     build: s => ({
       reason: { kind: 'neg', text: `High total fat — ${s.totalFatPer100g}g per 100g` },
       flag:   { tone: 'caution', label: 'High fat', detail: `${s.totalFatPer100g}g/100g` },
@@ -283,7 +305,7 @@ export const RULES: Rule[] = [
   {
     id: 'total_fat_moderate',
     severity: 'low',
-    when: s => s.category !== 'whole_food' && s.totalFatPer100g != null && s.totalFatPer100g >= 8 && s.totalFatPer100g < 17.5,
+    when: s => !fatEnergyExempt(s) && s.totalFatPer100g != null && s.totalFatPer100g >= 8 && s.totalFatPer100g < 17.5,
     build: s => ({
       reason: { kind: 'neg', text: `Moderate total fat — ${s.totalFatPer100g}g per 100g` },
     }),

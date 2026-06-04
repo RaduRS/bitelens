@@ -360,6 +360,23 @@ describe('evaluate', () => {
     expect(r.score).toBeLessThanOrEqual(55);
   });
 
+  it('exempts nut/seed-based foods from energy + total-fat penalties (healthy fats)', () => {
+    const saltedAlmonds: Product = {
+      id: 'p_saltalm', type: 'barcode', brand: 'Nutty', name: 'Salted Almonds',
+      subtitle: '30g', swatch: '#000', glyph: 'A',
+      ingredients: ['Almonds', 'Salt'], allergens: ['nuts'], additives: [],
+      nutrition: { serving: '30g', servingGrams: 30, kcal: 180, protein: 6, carbs: 2, sugar: 1, fat: 16, satFat: 1, fiber: 3, sodium: 150 },
+      nutriScore: 'C', ecoScore: null, novaGroup: 4, category: 'snack',
+    };
+    const r = evaluate(saltedAlmonds, DEFAULT_PROFILE);
+    // 600 kcal/100g and 53g fat/100g, but nut-based → not penalised on those axes
+    expect(r.triggeredRuleIds).not.toContain('energy_high');
+    expect(r.triggeredRuleIds).not.toContain('total_fat_high');
+    // Still a salty processed snack — caution, not a rock-bottom avoid like cola.
+    expect(r.verdict).not.toBe('good');
+    expect(r.score).toBeGreaterThan(15);
+  });
+
   it('lets positives offset penalties for minimally-processed food', () => {
     const stew: Product = {
       id: 'p_stew', type: 'barcode', brand: 'Hearth', name: 'Lentil Stew',
