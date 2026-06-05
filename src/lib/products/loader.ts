@@ -4,6 +4,7 @@ import { fetchProductFromOFF } from '@/lib/off/client';
 import { extractSignals } from '@/lib/rules/signals';
 import { lookupAdditive } from '@/lib/additives/registry';
 import { isOrganicLabelled, lookupPesticideAdvisory } from '@/lib/pesticides/registry';
+import { recordScanLog } from '@/lib/db/scan-log';
 import type { Product, Additive } from '@/types/product';
 
 export const BARCODE_RE = /^\d{6,14}$/;
@@ -61,6 +62,11 @@ export async function loadProductByBarcode(barcode: string): Promise<Product | n
       origins: fresh.originsTags ?? [],
     })
     .onConflictDoNothing();
+
+  // Log on first discovery only (cache miss) — avoids re-logging on every
+  // history re-view. Barcode verdicts are deterministic, so one log per new
+  // product is enough to reconstruct any later complaint.
+  await recordScanLog({ type: 'barcode', product: fresh, barcode });
 
   return fresh;
 }

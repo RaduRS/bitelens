@@ -92,7 +92,13 @@ const JSON_SCHEMA = {
   },
 } as const;
 
-export async function analyzePhoto({ base64, mimeType }: AnalyzePhotoInput): Promise<Product> {
+export interface AnalyzePhotoResult {
+  product: Product;
+  /** The raw model response before our coercion/sanitization — kept for diagnostics. */
+  analysis: AnalysisResponse;
+}
+
+export async function analyzePhoto({ base64, mimeType }: AnalyzePhotoInput): Promise<AnalyzePhotoResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
 
@@ -148,5 +154,5 @@ export async function analyzePhoto({ base64, mimeType }: AnalyzePhotoInput): Pro
   if (!text) throw new Error('OpenAI returned empty content');
 
   const parsed = JSON.parse(text) as AnalysisResponse;
-  return responseToProduct(parsed);
+  return { product: responseToProduct(parsed), analysis: parsed };
 }
