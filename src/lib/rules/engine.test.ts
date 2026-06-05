@@ -48,7 +48,7 @@ describe('evaluate', () => {
     expect(ok.triggeredRuleIds).not.toContain('diet_low_carb_breach');
   });
 
-  it('caps photo products at 75 even when no negative rule fires', () => {
+  it('a clean nutrient-dense photo meal scores in the Good band on its merits', () => {
     const photoProduct: Product = {
       id: 'photo_test', type: 'photo', brand: '', name: 'Pristine Bowl',
       subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
@@ -59,26 +59,21 @@ describe('evaluate', () => {
       confidence: 0.9,
     };
     const r = evaluate(photoProduct, DEFAULT_PROFILE);
-    expect(r.score).toBe(75);
+    // No category cliff: a clean meal scores Good on its nutrients, not a flat cap.
+    expect(r.verdict).toBe('good');
+    expect(r.score).toBeGreaterThanOrEqual(70);
   });
 
-  it('caps barcode products with no Nutri-Score and no NOVA at 80', () => {
+  it('barcode product missing official grades is scored on nutrients, not pinned to a ceiling', () => {
+    // Oat crisps without Nutri-Score/NOVA: energy + salt dense → lands in Caution
+    // on the gradient. The old data-completeness cap (≤80/≤90) is gone.
     const product: Product = {
       ...PRODUCT_INDEX.p_oat_crisps,
       nutriScore: null,
       novaGroup: null,
     };
     const r = evaluate(product, DEFAULT_PROFILE);
-    expect(r.score).toBeLessThanOrEqual(80);
-  });
-
-  it('caps barcode products missing one of Nutri-Score/NOVA at 90', () => {
-    const product: Product = {
-      ...PRODUCT_INDEX.p_oat_crisps,
-      nutriScore: null,
-    };
-    const r = evaluate(product, DEFAULT_PROFILE);
-    expect(r.score).toBeLessThanOrEqual(90);
+    expect(r.verdict).toBe('caution');
   });
 
   it('Haribo-style candy photo is Avoid (sub-40), not Good', () => {
@@ -158,7 +153,7 @@ describe('evaluate', () => {
     };
     const r = evaluate(fruitPhoto, DEFAULT_PROFILE);
     expect(r.verdict).toBe('good');
-    expect(r.score).toBe(100);
+    expect(r.score).toBeGreaterThanOrEqual(80);
     expect(r.triggeredRuleIds).not.toContain('sugar_severe');
     expect(r.triggeredRuleIds).not.toContain('sugar_high');
     expect(r.triggeredRuleIds).toContain('pos_whole_food');
@@ -178,7 +173,7 @@ describe('evaluate', () => {
     expect(r.verdict).toBe('good');
   });
 
-  it('a clean whole-food photo with zero negatives scores a perfect 100', () => {
+  it('a clean whole-food photo with zero negatives scores near the top', () => {
     const broccoli: Product = {
       id: 'photo_broccoli', type: 'photo', brand: '', name: 'Raw broccoli',
       subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
@@ -189,7 +184,7 @@ describe('evaluate', () => {
       confidence: 0.9,
     };
     const r = evaluate(broccoli, DEFAULT_PROFILE);
-    expect(r.score).toBe(100);
+    expect(r.score).toBeGreaterThanOrEqual(90);
     expect(r.verdict).toBe('good');
   });
 

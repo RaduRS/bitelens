@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { analyzePhoto } from '@/lib/ai/vision';
+import { recordScanLog } from '@/lib/db/scan-log';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,10 +22,12 @@ export async function POST(req: Request) {
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const product = await analyzePhoto({
+    const { product, analysis } = await analyzePhoto({
       base64: bytes.toString('base64'),
       mimeType: file.type,
     });
+    // Diagnostic log — best-effort, never blocks the response on a DB failure.
+    await recordScanLog({ type: 'photo', product, aiRaw: analysis });
     return NextResponse.json({ product });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Failed to analyze photo.';
