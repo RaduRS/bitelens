@@ -2,8 +2,8 @@ import 'server-only';
 import { ulid } from 'ulid';
 import { getDb, schema } from '@/lib/db/client';
 import { evaluate } from '@/lib/rules/engine';
+import { nutrientBase } from '@/lib/rules/nutrient-score';
 import { extractSignals } from '@/lib/rules/signals';
-import { maxScoreCap } from '@/lib/rules/score';
 import { DEFAULT_PROFILE } from '@/types/profile';
 import type { Product } from '@/types/product';
 
@@ -24,7 +24,18 @@ export async function recordScanLog({ type, product, barcode, aiRaw }: RecordSca
     if (!process.env.DATABASE_URL) return;
     const signals = extractSignals(product);
     const result = evaluate(product, DEFAULT_PROFILE);
-    const cap = maxScoreCap(signals, product);
+    // Store the pre-penalty nutrient base in the score_cap column — it tells us,
+    // for any complaint, how much of the final score came from nutrition vs the
+    // penalty/bonus layers.
+    const base = nutrientBase({
+      energyPer100g: signals.energyPer100g,
+      satFatPer100g: signals.satFatPer100g,
+      sodiumPer100g: signals.sodiumPer100g,
+      sugarForScore: signals.sugarPerServing,
+      fvlPercent: signals.fvlPercent,
+      fiberPer100g: signals.fiberPer100g,
+      proteinPer100g: signals.proteinPer100g,
+    });
     const db = getDb();
     await db.insert(schema.scanLogs).values({
       id: ulid(),
@@ -38,7 +49,7 @@ export async function recordScanLog({ type, product, barcode, aiRaw }: RecordSca
       nutrition: product.nutrition,
       score: result.score,
       verdict: result.verdict,
-      scoreCap: cap,
+      scoreCap: base,
       triggeredRules: result.triggeredRuleIds,
     });
   } catch (err) {

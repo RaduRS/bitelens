@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { recordScan, listScans, setFavorite, clearHistory, type ScanEntry } from './storage';
+import { evaluate } from '@/lib/rules/engine';
 import { DEFAULT_PROFILE } from '@/types/profile';
 import { PRODUCT_INDEX } from '@/fixtures/sample-products';
 
@@ -29,8 +30,11 @@ describe('history storage', () => {
   it('re-evaluates verdict and score on read against current rules', async () => {
     await recordScan(sample('a', 1));
     const [entry] = await listScans(DEFAULT_PROFILE);
-    expect(entry.verdict).toBe('good');
-    expect(entry.score).toBeGreaterThanOrEqual(70);
+    // The stored score is recomputed live, so it matches a fresh evaluation
+    // (not a frozen value persisted at scan time).
+    const fresh = evaluate(PRODUCT_INDEX.p_oat_crisps, DEFAULT_PROFILE);
+    expect(entry.verdict).toBe(fresh.verdict);
+    expect(entry.score).toBe(fresh.score);
   });
 
   it('reflects profile changes (keto user sees keto breaches on stored scans)', async () => {
