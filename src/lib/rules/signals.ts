@@ -34,6 +34,30 @@ export interface SignalSet {
 
 const RISK_RANK: Record<AdditiveRisk, number> = { none: 0, low: 1, moderate: 2, high: 3 };
 
+// Whole fruit/veg/legume names. Used to FLOOR the FVL% on photos: if the AI
+// mislabels a banana as `dessert` it may also report fvl=0, which would erase
+// the offset that keeps whole fruit out of the junk band. When EVERY visible
+// component is an obvious whole food we floor FVL to 100 so the score degrades
+// gracefully on a misclassification instead of collapsing. Conservative on
+// purpose — a single non-whole component (cream, chocolate, syrup) disables it.
+const WHOLE_FVL = [
+  'apple', 'banana', 'orange', 'pear', 'grape', 'berry', 'strawberry', 'blueberry',
+  'raspberry', 'blackberry', 'mango', 'pineapple', 'peach', 'plum', 'kiwi', 'melon',
+  'watermelon', 'cherry', 'apricot', 'fig', 'pomegranate', 'clementine', 'mandarin',
+  'broccoli', 'spinach', 'carrot', 'tomato', 'cucumber', 'pepper', 'lettuce', 'kale',
+  'courgette', 'zucchini', 'cauliflower', 'green bean', 'pea', 'lentil', 'chickpea',
+  'bean', 'avocado', 'asparagus', 'celery', 'mushroom', 'onion', 'beetroot', 'cabbage',
+];
+
+export function fvlFloorFromComponents(components: string[], aiValue: number): number {
+  if (!components.length) return aiValue;
+  const allWhole = components.every(c => {
+    const l = c.toLowerCase();
+    return WHOLE_FVL.some(w => l.includes(w));
+  });
+  return allWhole ? Math.max(aiValue, 100) : aiValue;
+}
+
 // Pull a serving weight (g or ml) out of a free-text serving string like
 // "30g (≈12 crisps)", "355ml can", "1 portion (40 g)". First number followed by
 // a g/ml unit wins. Returns null when nothing usable is present (e.g. the
@@ -51,6 +75,16 @@ function per100(perServing: number, explicit: number | undefined, grams: number 
   if (typeof explicit === 'number' && Number.isFinite(explicit)) return Math.max(0, explicit);
   if (grams && grams > 0) return Math.round((perServing / grams) * 1000) / 10;
   return null;
+}
+
+// Photo FVL is floored from the visible whole-food components (mislabel
+// defence). Barcode FVL is taken straight from OFF — its FVL estimate is
+// authoritative and the category isn't AI-guessed, so no flooring needed.
+function resolveFvl(p: Product): number | null {
+  const ai = typeof p.nutrition.fvlPercent === 'number' ? p.nutrition.fvlPercent : null;
+  if (p.type !== 'photo') return ai;
+  const components = p.components ?? p.ingredients ?? [];
+  return fvlFloorFromComponents(components, ai ?? 0);
 }
 
 export function extractSignals(p: Product): SignalSet {
@@ -88,7 +122,7 @@ export function extractSignals(p: Product): SignalSet {
     ),
     fiberPer100g: per100(p.nutrition.fiber, p.nutrition.per100?.fiber, grams),
     proteinPer100g: per100(p.nutrition.protein, p.nutrition.per100?.protein, grams),
-    fvlPercent: typeof p.nutrition.fvlPercent === 'number' ? p.nutrition.fvlPercent : null,
+    fvlPercent: resolveFvl(p),
     additiveMaxRisk,
     additiveCount: p.additives.length,
     nutriScore: p.nutriScore,

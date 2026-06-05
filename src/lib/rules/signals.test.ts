@@ -1,6 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { extractSignals } from './signals';
+import { extractSignals, fvlFloorFromComponents } from './signals';
 import { PRODUCT_INDEX } from '@/fixtures/sample-products';
+
+describe('fvlFloorFromComponents', () => {
+  it('floors a single obvious fruit to 100', () => {
+    expect(fvlFloorFromComponents(['Banana'], 0)).toBeGreaterThanOrEqual(90);
+  });
+  it('does not lower an already-high AI value', () => {
+    expect(fvlFloorFromComponents(['Banana'], 100)).toBe(100);
+  });
+  it('ignores non-whole components', () => {
+    expect(fvlFloorFromComponents(['Chocolate', 'Sugar'], 0)).toBe(0);
+  });
+  it('only floors when EVERY component is a whole food', () => {
+    expect(fvlFloorFromComponents(['Banana', 'Whipped cream'], 0)).toBe(0);
+  });
+  it('floors a photo banana even when category is mislabelled', () => {
+    const banana = {
+      id: 'photo_banana', type: 'photo' as const, brand: '', name: 'Banana',
+      subtitle: '', swatch: '#000', glyph: '◐', components: ['Banana'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated serving', servingGrams: 118, kcal: 105, protein: 1.3, carbs: 27, sugar: 14, fat: 0.4, satFat: 0.1, fiber: 3.1, sodium: 1, fvlPercent: 0 },
+      nutriScore: null, ecoScore: null, novaGroup: 4 as const, category: 'dessert' as const,
+    };
+    expect(extractSignals(banana).fvlPercent).toBeGreaterThanOrEqual(90);
+  });
+});
 
 describe('extractSignals', () => {
   it('captures numeric facts from Cola', () => {
