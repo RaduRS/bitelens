@@ -47,12 +47,18 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
     proteinPer100g: signals.proteinPer100g,
   });
 
-  // ── Bonuses (soft, never a cap) ──
-  if (
+  // A clean whole food: NOVA 1, no additives, not a junk category. For these,
+  // identification confidence is orthogonal to healthiness — the worst a
+  // low-confidence misread can do is swap one whole food for another, which is
+  // still healthy. So this flag both awards the whole-food bonus AND exempts the
+  // item from the low-confidence safety rail below.
+  const isCleanWholeFood =
     signals.novaGroup === 1 &&
     signals.additiveCount === 0 &&
-    !(signals.category && UPF_CATEGORIES.has(signals.category))
-  ) {
+    !(signals.category && UPF_CATEGORIES.has(signals.category));
+
+  // ── Bonuses (soft, never a cap) ──
+  if (isCleanWholeFood) {
     score += BONUS_WHOLE_UNPROCESSED;
   }
   if (product.isOrganic === true) score += BONUS_ORGANIC;
@@ -61,9 +67,17 @@ export function evaluate(product: Product, profile: Profile): VerdictResult {
   // ── Penalty layer: harm axes the gradient is blind to ──
   for (const id of triggeredRuleIds) score -= (SCORING_PENALTY[id] ?? 0);
 
-  // ── Safety rail: a low-confidence photo can't reach the Good band even if
-  // everything else looks clean — the AI itself flagged it as uncertain. ──
-  if (product.type === 'photo' && (product.confidence ?? 1) < 0.4) {
+  // ── Safety rail: a low-confidence photo can't reach the Good band — the AI
+  // itself flagged it as uncertain. Clean whole foods are exempt: a misread that
+  // swaps one vegetable for another doesn't change the verdict, so capping them
+  // only punishes the healthiest foods (the model is systematically
+  // under-confident on obvious produce). The rail still guards ambiguous
+  // processed/composite items, where a misread could hide real harm. ──
+  if (
+    product.type === 'photo' &&
+    (product.confidence ?? 1) < 0.4 &&
+    !isCleanWholeFood
+  ) {
     score = Math.min(score, 60);
   }
 

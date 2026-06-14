@@ -9,7 +9,7 @@ interface AnalyzePhotoInput {
 
 const SYSTEM_PROMPT = `You analyze food photos for a nutrition app. Identify what's in the photo accurately, including packaged products like candy, soda, and snacks (not just home-cooked meals). Return strictly the JSON shape requested.
 
-CONFIDENCE: <0.4 blurry/ambiguous, 0.4-0.7 partially obscured, >0.7 clearly identifiable.
+CONFIDENCE: rate how sure you are of WHAT the foods are, not the exact portion/brand. If you can name the visible foods, confidence is HIGH (>0.7) even when the portion size, brand, or exact recipe is unclear — a plain avocado, egg, or steamed vegetables you can clearly identify is >0.85. Use 0.4-0.7 only when the food is partially obscured or you're genuinely unsure between a few options. Reserve <0.4 for blurry/dark/ambiguous images where you cannot confidently name the main item. Do NOT lower confidence just because you had to estimate nutrition.
 
 NUTRITION: realistic typical values for the visible portion. For packaged products (a bag of candy, a can of soda), use a typical single-serving size (e.g. ~25g for gummy sweets, 330ml for a soda can) — not the whole pack — and reflect that the per-serving sugar/sodium for these products is high.
 SERVING WEIGHT: also estimate servingGrams — the net weight in grams (or ml for drinks) of that single serving you costed the nutrition against (e.g. 25 for a handful of gummies, 30 for a portion of crisps, 330 for a soda can). This anchors the per-100g salt/fat assessment, so be realistic. If you genuinely cannot tell, return 0.
@@ -50,7 +50,7 @@ const USER_PROMPT = `Analyze this food photo. Return:
 - category: one of [meal, whole_food, snack, beverage, dessert, candy, fast_food, baked_good, fried_food, processed_meat]
 - processing: 1-4 NOVA group
 - flaggedIngredients: array of E-number codes (e.g. ["E150d","E338"]) — empty if none confidently inferable
-- confidence: 0.0-1.0`;
+- confidence: 0.0-1.0 — how sure you are of WHAT the foods are (clearly identifiable foods are >0.7, even if the portion/brand is estimated)`;
 
 const JSON_SCHEMA = {
   name: 'meal_analysis',

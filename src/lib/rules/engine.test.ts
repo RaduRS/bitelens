@@ -127,18 +127,36 @@ describe('evaluate', () => {
     expect(r.verdict).toBe('good');
   });
 
-  it('low-confidence photo cannot reach the Good band even with no negatives', () => {
+  it('low-confidence non-whole-food photo cannot reach the Good band even with no negatives', () => {
     const lowConfPhoto: Product = {
-      id: 'photo_blurry', type: 'photo', brand: '', name: 'Unclear food',
+      id: 'photo_blurry', type: 'photo', brand: '', name: 'Unclear cooked dish',
       subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
-      components: ['Salad'],
+      components: ['Unidentified mixed dish'],
       allergens: [], additives: [],
       nutrition: { serving: 'Estimated', kcal: 200, protein: 5, carbs: 30, sugar: 4, fat: 5, satFat: 1, fiber: 6, sodium: 200 },
-      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      nutriScore: null, ecoScore: null, novaGroup: 3, category: 'meal',
       confidence: 0.25,
     };
     const r = evaluate(lowConfPhoto, DEFAULT_PROFILE);
     expect(r.score).toBeLessThanOrEqual(60);
+  });
+
+  it('low-confidence CLEAN WHOLE FOOD photo is exempt from the cap and scores Good', () => {
+    // Regression: gpt-5-nano returns conf ~0.25 for an obvious avocado+egg /
+    // carrots+peas. ID uncertainty is orthogonal to healthiness for a NOVA-1
+    // whole food, so the safety rail must not drag it down to caution.
+    const lowConfWholeFood: Product = {
+      id: 'photo_carrots_peas', type: 'photo', brand: '', name: 'Steamed Carrots and Peas',
+      subtitle: 'Photo · detected meal', swatch: '#7a8a5e', glyph: '◐',
+      components: ['Carrots', 'Peas'],
+      allergens: [], additives: [],
+      nutrition: { serving: 'Estimated', servingGrams: 100, kcal: 40, protein: 2, carbs: 7, sugar: 3, fat: 0, satFat: 0, fiber: 3, sodium: 10, fvlPercent: 100 },
+      nutriScore: null, ecoScore: null, novaGroup: 1, category: 'whole_food',
+      confidence: 0.28,
+    };
+    const r = evaluate(lowConfWholeFood, DEFAULT_PROFILE);
+    expect(r.verdict).toBe('good');
+    expect(r.score).toBeGreaterThan(60);
   });
 
   it('apple+banana whole_food photo lands in the Good band, not Caution', () => {
